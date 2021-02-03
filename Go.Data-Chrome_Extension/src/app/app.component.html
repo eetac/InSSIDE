@@ -1,0 +1,24 @@
+<!-- nav -->
+<nav class="navbar navbar-expand-sm justify-content-center bg-primary navbar-dark" *ngIf="userActive">
+  <div class="navbar-nav">
+      <a class="nav-item nav-link" routerLink="/home">Home</a>
+      <a class="nav-item nav-link" (click)="logout()">Logout</a>
+  </div>
+</nav>
+<nav class="navbar navbar-expand-sm justify-content-center bg-primary navbar-dark" *ngIf="!userActive">
+  <div class="navbar-nav">
+      <a class="nav-item nav-link" routerLink="/login">Login</a>
+  </div>
+</nav>
+
+
+<!-- main content container -->
+<div class="jumbotron">
+  <div class="container">
+      <div class="row">
+          <div class="col-sm-8 offset-sm-2">
+              <router-outlet></router-outlet>
+          </div>
+      </div>
+  </div>
+</div>

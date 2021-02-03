@@ -1,0 +1,30 @@
+#decryptedCase {
+    font-family: Arial, Helvetica, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+  }
+  
+  #decryptedCase td, #decryptedCase th {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+  
+  #decryptedCase tr:nth-child(even){background-color: #f2f2f2;}
+  
+  #decryptedCase tr:hover {background-color: #ddd;}
+  
+  #decryptedCase th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #1E90FF;
+    color: white;
+  }
+
+  /* Right column */
+.rightcolumn {
+  float: left;
+  width: 25%;
+  background-color: #f1f1f1;
+  padding-left: 20px;
+}
