@@ -1,4 +1,4 @@
-import mongoose, { model } from 'mongoose';
+import mongoose from 'mongoose';
 import User from './models/userHosp';
 import { RSA } from './lib/RSA';
 import * as CryptoJS from 'crypto-js'
@@ -12,19 +12,16 @@ mongoose.set('useCreateIndex', true);
 function initiateDB() {	
     return new Promise((resolve,reject )=>{
         try {
-        mongoose.connect('mongodb://localhost/DRM', (error) => {
-            if (!error) {
-                console.log('Connection w/ DB Succesful!');
-                resolve( true );
-                return;
-            }
-            else {
-                console.log('Connection Error w/DB');
-                reject( new Error( error.message ) );
-                return;
-            }
-        })
-        } catch (error) {
+        mongoose.connect('mongodb://localhost/DRM').then(r =>{
+            console.log('Connection w/ DB Succesful!');
+            resolve(true);
+            return;
+        }).catch((err)=>{
+            //Already being handled in index.ts console.log('Connection Error w/DB');
+            reject(new Error(err.message));
+            return;
+        });
+        } catch  (error) {
             ////console.debug("Some error while setting LastActive on User", error);
             reject( new Error( error ) );
             return;
@@ -39,7 +36,7 @@ function initiateDB() {
 function createAdmin():Promise<boolean>{
     return new Promise((resolve,reject )=>{
         try {
-            var query = { "username": "admin" };
+            let query = { "username": "admin" };
             User.findOne(query).then((res)=>{
                 if(res==null){
                     // Admin not created in the DB
@@ -57,15 +54,15 @@ function createAdmin():Promise<boolean>{
                             };
                             let password = CryptoJS.SHA256("admin").toString();
                             let managerUser = new User({
-                                "username" :"admin",
-                                "contactInfo": "admin@admin.com",
-                                "password": password,
-                                "pubKey": pubKey,
-                                "privKey": privKey 
+                                username :"admin",
+                                contactInfo: "admin@admin.com",
+                                password: password,
+                                pubKey: pubKey,
+                                privKey: privKey
                             });
                             //We need to has the password 
                             
-                            managerUser.save().then((data) => {
+                            managerUser.save().then((_) => {
                                 console.log("admin created with username:admin & password:admin; Remember to change!");
                                 resolve( true );
                                 return;
@@ -76,7 +73,7 @@ function createAdmin():Promise<boolean>{
                         }else{
                             reject( new Error( "Null RSA Keys Generated!" ) );
                             return;
-                        };
+                        }
                     }).catch((err)=>{
                         reject( new Error( err ) );
                         return;

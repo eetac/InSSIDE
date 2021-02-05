@@ -119,6 +119,10 @@
           }
         }
       }
-    }},
-  "defaultProject": "godata-chromeextension"
+    }
+  },
+  "defaultProject": "godata-chromeextension",
+  "cli": {
+    "analytics": "978e9086-68fa-485f-8fca-5500e76ae6d6"
+  }
 }

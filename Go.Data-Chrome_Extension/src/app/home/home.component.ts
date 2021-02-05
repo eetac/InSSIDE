@@ -135,7 +135,7 @@ export class HomeComponent implements OnInit {
 
      this.rows.push({
       "CIP": data.spCase["documents"][positionCIP]["number"],
-      "Fullname": data.spCase["firstName"] + data.spCase["middleName"] + data.spCase["lastName"],
+      "Fullname": data.spCase["firstName"]+" " + data.spCase["middleName"]+" "  + data.spCase["lastName"],
       "Phone Number": data.spCase["addresses"][0]["phoneNumber"]
     })
 
