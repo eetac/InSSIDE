@@ -8,7 +8,7 @@ import { IHttpClientResponse, IHeaders } from "typed-rest-client/Interfaces";
 import { ConfigurationData } from './config'
 import * as CryptoJS from 'crypto-js'
 import crypto from 'crypto'
-import godataIdentity from "../models/godataIdentity";
+import GodataLicenses from "../models/godataLicenses";
 import User from "../models/userHosp";
 import { PublicKey } from "./PublicKey";
 import * as bigintCryptoUtils from 'bigint-crypto-utils'
@@ -27,51 +27,53 @@ export class EncryptCases {
     //for all the cases we encrypt if is needed the sensible data
     let fieldsModified: Number = 0;
     for (let i = 0; i < cases.length; i++) {
-      console.log("STEP0 --> CASE: " + cases[i])
+      //console.log("STEP0 --> CASE: " + cases[i])
       //First we need to know who have added this case to Go.Data and generate the hash of the case
       let creator = cases[i].createdBy;
       let creatorEmail = await this.getEmailCreator(cases[i].createdBy)
       console.log("STEP1 --> EMAIL CREATOR: " + creatorEmail)
       let encryptionKey = crypto.randomFillSync(Buffer.alloc(8)).toString('hex');
       console.log("STEP2 --> ENCRYPTION KEY: " + encryptionKey)
-      let positionCIP = 0; // To then update
+      //All documents number must be hashed and encrypted
+      /*let positionCIP = 0; // To then update*!/*/
 
-      while (cases[i]["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
+      /*while (cases[i]["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
         positionCIP = positionCIP + 1;
-      }
+      }*/
 
-      let fullFieldsToHash = cases[i]["documents"][positionCIP]["number"].toUpperCase();
-      let hash = this.caseHash(fullFieldsToHash);
+      /*let fullFieldsToHash = cases[i]["documents"][positionCIP]["number"].toUpperCase();
+      let hash = this.caseHash(fullFieldsToHash);*/
 
       //Now for each field sensitive it is encrypted
-      config.sensitiveData.forEach(element => {
+      config.sensitiveData.forEach(sensitiveField => {
 
-        let isDocument = element.split(",").length; //If there is a document like  address,phoneNumber
-        // console.log(isDocument)
+        let sensitiveFieldLength = sensitiveField.split(",").length; //If there is a subSensitiveField like  address,phoneNumber
 
-        if (isDocument == 1) { //We don't need to split because is not a doc
+        if (sensitiveFieldLength == 1) { //We don't need to split because sensitiveField doesn't have subSensitiveField
 
-          //If the beggining of the value is different of /ENC (so it has not been encrypted yet) we encrypt the field and add /ENC/creatorEmail at the beggining
-          // console.log("###################")
-          // console.log(cases[i][element].substring(0, 5))
-          // console.log("###################")
-          if (cases[i][element].substring(0, 5) != "/ENC/") {
-            fieldsModified = 1; //SetModified
-            let encryptedField: String = this.encrypt(cases[i][element], encryptionKey);
-            console.log(encryptedField)
-            cases[i][element] = "/ENC/" + creatorEmail + "/" + encryptedField
+          // If the beginning of the value is different of /ENC
+          // (so it has not been encrypted yet) we encrypt the field and add /ENC/creatorEmail at the beggining
+          if (cases[i][sensitiveField].substring(0, 5) != "/ENC/") {
+            fieldsModified = 1; //Field Modified
+            let encryptedField: String = this.encrypt(cases[i][sensitiveField], encryptionKey);
+            console.log(encryptedField);
+            cases[i][sensitiveField] = "/ENC/" + creatorEmail + "/" + encryptedField;
           }
         }
-        else { //is a document
-
-          // console.log("########ELSE######")
-          // console.log(cases[i][element.split(",")[0]][0][element.split(",")[1]])
-          // console.log("###################")
-          if (cases[i][element.split(",")[0]][0][element.split(",")[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
-            fieldsModified = 1; //SetModified
-            let encryptedField: String = this.encrypt(cases[i][element.split(",")[0]][0][element.split(",")[1]], encryptionKey);
-            console.log(encryptedField)
-            cases[i][element.split(",")[0]][0][element.split(",")[1]] = "/ENC/" + creatorEmail + "/" + encryptedField
+        else { //had sensitiveField configured in config with internal subfields of the objects stored in a array
+          let subSensitiveField = sensitiveField.split(",");
+            // Documents which contains a list of documents such as nationality, archived_id etc, so
+            // need to go over each document and encrypt the number of that document which we want to protect
+            // Also applies for addresses, which might contain phone and adresss
+          let fieldObjectsLength = cases[i][subSensitiveField[0]].length;
+            for(let subSensitiveFields=0;subSensitiveFields<fieldObjectsLength;subSensitiveFields++){
+              if (cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
+                fieldsModified = 1; //SetModified
+                let fieldNeededEncryption = cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]];
+                let encryptedField: String = this.encrypt(fieldNeededEncryption, encryptionKey);
+                console.log(encryptedField)
+                cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = "/ENC/" + creatorEmail + "/" + encryptedField
+              }
           }
         }
       });
@@ -79,18 +81,19 @@ export class EncryptCases {
       if (fieldsModified != 0) {
         //We update only the cases where we have encrypted data
 
-        //Finnaly for all the cases we encrypt the CIP and add the hash field
-        let encryptedField: String = this.encrypt(cases[i]["documents"][positionCIP]["number"], encryptionKey);
+        //Finally for all the cases we encrypt the CIP and add the hash field
+        //For each case-->document, we need to also encrypt the field for example the number of the document
+        /*let encryptedField: String = this.encrypt(cases[i]["documents"][positionDoucment]["number"], encryptionKey);
         console.log(encryptedField)
-        cases[i]["documents"][positionCIP]["number"] = "/ENC/" + creatorEmail + "/" + encryptedField;
+        cases[i]["documents"][positionDocument]["number"] = "/ENC/" + creatorEmail + "/" + encryptedField;*/
 
-        //Add the Hash
+        /*//Add the Hash
         cases[i]["documents"][cases[i]["documents"].length] = {
           "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER",
           "number": hash
-        }
+        }*/
 
-        console.log("Returning save to Go.Data --> new Entry: " + cases[i])
+        //console.log("Returning save to Go.Data --> new Entry: " + cases[i])
 
         await this.updateCase(cases[i]);
 
@@ -115,8 +118,8 @@ export class EncryptCases {
             }];
         }
         else {
-          let keyEncryptedhosp: bigint = bigintCryptoUtils.modPow(textToBigint(encryptionKey), hospUser.get('pubKey.publicexp'), hospUser.get('pubKey.publicmod'))
-          console.log(keyEncryptedhosp)
+          let keyEncryptedHospital: bigint = bigintCryptoUtils.modPow(textToBigint(encryptionKey), hospUser.get('pubKey.publicexp'), hospUser.get('pubKey.publicmod'))
+          console.log(keyEncryptedHospital)
           keys = [
             {
               hospitalName: "admin",
@@ -124,14 +127,17 @@ export class EncryptCases {
             },
             {
               hospitalName: creatorEmail,
-              usedKey: keyEncryptedhosp
+              usedKey: keyEncryptedHospital
             }
           ]
         }
 
-        const newEntry = new godataIdentity({ hash,creatorEmail, keys }); //New entry in our DRM server to store the keys
-        console.log("STEP7 --> new Entry: " + newEntry)
-        newEntry.save().then((data) => {
+        const newGoDataLicenseCase = new GodataLicenses({
+          caseId: cases[i]['id'],
+          creatorEmail: creatorEmail,
+          keys:keys }); //New entry in our DRM server to store the keys
+        console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)
+        newGoDataLicenseCase.save().then((data) => {
           res.status(201).send({ message: "Encrypted" });
         }).catch((err) => {
           console.log(err)

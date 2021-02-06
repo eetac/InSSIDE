@@ -6,7 +6,7 @@ import User from '../models/userHosp';//We send a message to the client
 import { toJson } from 'typedjson';
 import { EncryptCases } from '../lib/EncryptCases';
 import { ConfigurationData } from '../lib/config';
-import godataIdentity from '../models/godataIdentity';
+import godataIdentity from '../models/godataLicenses';
 import { bigintToText, textToBigint } from 'bigint-conversion';
 
 async function login(req: Request, res: Response, next: NextFunction) {
