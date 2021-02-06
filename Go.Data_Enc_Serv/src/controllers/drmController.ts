@@ -6,7 +6,7 @@ import User from '../models/userHosp';//We send a message to the client
 import { toJson } from 'typedjson';
 import { EncryptCases } from '../lib/EncryptCases';
 import { ConfigurationData } from '../lib/config';
-import godataIdentity from '../models/godataLicenses';
+import GoDataLicenses from '../models/godataLicenses';
 import { bigintToText, textToBigint } from 'bigint-conversion';
 
 async function login(req: Request, res: Response, next: NextFunction) {
@@ -88,7 +88,7 @@ async function getKeyOfCase(req: Request, res: Response) {
 
     //In case there is a problem finding the hash case
     try {
-        let goDataId = new godataIdentity(await godataIdentity.findOne({ hash: hashCase, creatorEmail:username})).toJSON();
+        let goDataId = new GoDataLicenses(await GoDataLicenses.findOne({ hash: hashCase, creatorEmail:username})).toJSON();
         let i = 0;
         while (goDataId.keys[i].hospitalName != username) {
             i = i + 1;
@@ -133,7 +133,7 @@ async function getKeyOfCase(req: Request, res: Response) {
     }
     catch (error) {
         //If is not the creator we need to check for the hash Case if has permission from other hospital
-        let goDataId1 = new godataIdentity(await godataIdentity.findOne({hash: hashCase, "keys.hospitalName":username })).toJSON();
+        let goDataId1 = new GoDataLicenses(await GoDataLicenses.findOne({hash: hashCase, "keys.hospitalName":username })).toJSON();
         console.log("CASO EN EL QUE NOS HAN DADO PERMISO-->"+goDataId1.hash)
         let i = 0;
         while (goDataId1.keys[i].hospitalName != username) {
@@ -171,28 +171,28 @@ async function getKeyOfCase(req: Request, res: Response) {
 }
 
 async function dataKeyTransfer(req:Request, res: Response){
-    console.log("Arrived Transfer Solicitat")
-    //Tranfering the Key from one hospital no another
+    console.log("Arrived Transfer Solicited")
+    //Transferring the Key from one hospital no another
     let hashCase = req.body.hashCase;
     let username = req.body.username; 
-    let usernameToTranfer = req.body.usernameToTranfer;
+    let usernameToTransfer = req.body.usernameToTranfer;
     let rootUser = new User(await User.findOne({ username: "admin"})).toJSON(); //Needed to obtain the private key --> It can be changed to send directly form extension
-    let targetUser =  new User(await User.findOne({ username: usernameToTranfer})).toJSON();
-    let identityToTranfer = new godataIdentity(await godataIdentity.findOne({ hash: hashCase , creatorEmail: username })) //To obtain the password
-    let JsonIdentityToTrasnfer = identityToTranfer.toJSON()
-    console.log(JsonIdentityToTrasnfer)
+    let targetUser =  new User(await User.findOne({ username: usernameToTransfer})).toJSON();
+    let identityToTransfer = new GoDataLicenses(await GoDataLicenses.findOne({ hash: hashCase , creatorEmail: username })) //To obtain the password
+    let JsonLicenseToTransfer = identityToTransfer.toJSON()
+    console.log(JsonLicenseToTransfer)
     //Decrypt Sym Key
-    let privateKeyOfUser: bigint = bigintCryptoUtils.modPow(JsonIdentityToTrasnfer.keys[0].usedKey, rootUser.privKey.privateexp, rootUser.privKey.publicmod)
+    let privateKeyOfUser: bigint = bigintCryptoUtils.modPow(JsonLicenseToTransfer.keys[0].usedKey, rootUser.privKey.privateexp, rootUser.privKey.publicmod)
     let newEntryOfTransfer = {
-        hospitalName: usernameToTranfer ,
+        hospitalName: usernameToTransfer ,
         usedKey: bigintCryptoUtils.modPow(privateKeyOfUser, targetUser.pubKey.publicexp, targetUser.pubKey.publicmod) ,
     }
-    JsonIdentityToTrasnfer["keys"].push(newEntryOfTransfer)
+    JsonLicenseToTransfer["keys"].push(newEntryOfTransfer)
     //We overwrite with the new keys
-    identityToTranfer.overwrite(JsonIdentityToTrasnfer);
+    identityToTransfer.overwrite(JsonLicenseToTransfer);
     //We save the data 
-    await identityToTranfer.save().then((data) => {
-        console.log('Trasnfered Info successfully');
+    await identityToTransfer.save().then((data) => {
+        console.log('Transferred Info successfully');
         res.status(200).send();
     }).catch((err) => {
         console.log(err)

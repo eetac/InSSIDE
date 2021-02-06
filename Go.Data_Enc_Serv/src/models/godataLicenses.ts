@@ -15,4 +15,4 @@ const GoDataLicensesSchema: Schema = new Schema({
 });
 
 
-export default model('GoDataIdentity', GoDataLicensesSchema);
+export default model('GoDataLicenses', GoDataLicensesSchema);

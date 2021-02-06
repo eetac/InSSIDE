@@ -10,10 +10,10 @@ import * as CryptoJS from 'crypto-js'
 import crypto from 'crypto'
 import GodataLicenses from "../models/godataLicenses";
 import User from "../models/userHosp";
-import { PublicKey } from "./PublicKey";
 import * as bigintCryptoUtils from 'bigint-crypto-utils'
 import { bigintToText, textToBigint } from "bigint-conversion";
-import { text } from "body-parser";
+
+import GoDataLicenses from "../models/godataLicenses";
 
 const config: ConfigurationData = new ConfigurationData();
 export class EncryptCases {
@@ -138,10 +138,11 @@ export class EncryptCases {
           keys:keys }); //New entry in our DRM server to store the keys
         console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)
         newGoDataLicenseCase.save().then((data) => {
-          res.status(201).send({ message: "Encrypted" });
+          return res.status(201).send({ message: "Encrypted" });
+
         }).catch((err) => {
           console.log(err)
-          res.status(500).json({ message: err });
+          return res.status(500).json({ message: err });
         })
         fieldsModified = 0 //Reset
       }
@@ -153,7 +154,6 @@ export class EncryptCases {
   public async decryptCase(req: Request, res: Response) {
 
     let spCase = await this.getSpecificCase(req.body.ID);
-    let positionHash: number = 0;
     //Once we have the case we need to check the get the key to decrypt that is encrypted with pubkey of Hosp
     // while (spCase["documents"][positionHash]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER") {
     //   positionHash = positionHash + 1;
@@ -163,37 +163,69 @@ export class EncryptCases {
 
     //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
 
-    //Just for test we put the key already decrypted 
-
-    let key: string = "a16ffd29e64fa048"
-
-    config.sensitiveData.forEach(element => {
-      var isDocument = element.split(",").length; //If there is a document we have address,phoneNumber
-      if (isDocument == 1) {
-        //If the beggining of the value is equal to /ENC/ we decrypt the field 
-        if (spCase[element].substring(0, 5) == "/ENC/") {
-          let valueToDecrypt = spCase[element].substring(42,)//from 42 because after /ENC/ we have the id of the creator
-          let decryptedField: String = this.decrypt(valueToDecrypt, key);
-          spCase[element] = decryptedField
+    //Just for test we put the key already decrypted
+    let managerUser = await User.findOne({ username: "admin"});
+    let useruser = new User(await User.findOne({ username: "krunal@krunal.com" }));
+    let goDataId = await GoDataLicenses.findOne({ caseId: req.body.ID}).lean();
+    // @ts-ignore
+    let privateKeyOfUSer: bigint = bigintCryptoUtils.modPow(useruser.get('privKey.privateexp'), managerUser.get('privKey.privateexp'), managerUser.get('pubKey.publicmod'))
+    //let keyEncrypted = bigintCryptoUtils.modPow(textToBigint(encryptionKey), managerUser.get('pubKey.publicexp'), managerUser.get('pubKey.publicmod'));
+    //b,e,n
+    /*let bigIntKey = bigintCryptoUtils.modInv()*/
+    // @ts-ignore
+    let symmetricKey: bigint = bigintCryptoUtils.modPow(goDataId.keys[0].usedKey, privateKeyOfUSer, useruser.get('pubKey.publicmod'))
+    let symmetricKeyText = bigintToText(symmetricKey); //Works --> Symmetric Key obtained decrypting first the privatekey of user
+    //let keyEncrypted = bigintCryptoUtils.modPow(textToBigint(encryptionKey), managerUser.get('pubKey.publicexp'), managerUser.get('pubKey.publicmod'));
+    let key: string = symmetricKeyText;
+    key ="80e1fa391431444a" +
+        "U2FsdGVkX18m5O2TpLYZx2G/qdx8sXZT4IEtZ8TSjys=" +
+        "U2FsdGVkX19E5c0F/TaKdQhNG3VyyDfA14bUArArcV0=" +
+        "U2FsdGVkX1/2qbeUQMaw3JUfHWCsrd8JPl1OfnUtB6I=" +
+        "U2FsdGVkX1+knktxfejo/lDVVcJLXEMzaw4Ry3Ki7RY=" +
+        "U2FsdGVkX19wZG/AftNBnoqBRICjL5kvy/iOMm6Hp2VJFxgKV//nA/mhfbLV8R4N";
+    config.sensitiveData.forEach(sensitiveField => {
+      let subSensitiveField = sensitiveField.split(",");
+       //If there is a document we have address,phoneNumber
+      if (subSensitiveField.length == 1) {
+        //If the beginning of the value is equal to /ENC/ we decrypt the field
+        if (spCase[sensitiveField].substring(0, 5) == "/ENC/") {
+          let sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split("/");
+          let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+          let encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue,);
+          /*let valueToDecrypt = spCase[sensitiveField].substring(42,)*///from 42 because after /ENC/ we have the id of the creator
+          let decryptedField: String = this.decrypt(encryptedFieldValue, key);
+          spCase[sensitiveField] = decryptedField
         }
       }
       else {
-        if (spCase[element.split(",")[0]][0][element.split(",")[1]].substring(0, 5) == "/ENC/") {
-          let valueToDecrypt = spCase[element.split(",")[0]][0][element.split(",")[1]].substring(42,)
-          let decryptedField: String = this.decrypt(valueToDecrypt, key);
-          spCase[element.split(",")[0]][0][element.split(",")[1]] = decryptedField
+        //had sensitiveField configured in config with internal subfields of the objects stored in a array
+        /*if (spCase[subSensitiveField[0]].substring(0, 5) == "/ENC/") {*/
+          // Documents which contains a list of documents such as nationality, archived_id etc, so
+          // need to go over each document and encrypt the number of that document which we want to protect
+          // Also applies for addresses, which might contain phone and addresses
+          let fieldObjectsLength = spCase[subSensitiveField[0]].length;
+          for (let subSensitiveFields = 0; subSensitiveFields < fieldObjectsLength; subSensitiveFields++) {
+            let sensitiveFieldValueSplit = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].split("/");
+            let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+            let encryptedFieldValue = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
+            if (sensitiveFieldValueSplit[1] == "ENC") { //if is encrypted
+              /*let fieldNeededEncryption = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]];
+              let valueToDecrypt = spCase[element.split(",")[0]][0][element.split(",")[1]].substring(42,)*/
+              let decryptedField: String = this.decrypt(encryptedFieldValue, key);
+              spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+          }
         }
       }
     });
      //Finally decrypt CIP
-     let positionCIP: number = 0;
+     /*let positionCIP: number = 0;
      while (spCase["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
        positionCIP = positionCIP + 1;
      }
      let CIPToDecrypt = spCase["documents"][positionCIP]["number"].substring(42,)
      console.log("CIP--"+CIPToDecrypt)
      let decryptedField: String = this.decrypt(CIPToDecrypt, key);
-     spCase["documents"][positionCIP]["number"] = decryptedField
+     spCase["documents"][positionCIP]["number"] = decryptedField*/
      //And we have the case decrypted
     res.status(200).send(spCase);
   }
@@ -273,7 +305,7 @@ export class EncryptCases {
     const result = await response.readBody();
     const statusCode = response.message.statusCode;
     console.log("STATUS CODE " + statusCode)
-    console.log(`RESULT: ${result}`);
+    /*console.log(`RESULT: ${result}`);*/
     return result;
   }
 

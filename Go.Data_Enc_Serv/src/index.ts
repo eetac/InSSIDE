@@ -17,7 +17,7 @@ app.use( bodyParser.json() );
 
 
 //Middlewares
-app.use(express.json()); //Entender JSON
+app.use(express.json()); //Parse JSON
 app.use(express.urlencoded({extended: false}));
 
 
@@ -26,9 +26,7 @@ app.use(express.urlencoded({extended: false}));
 dbHandler.initiateDB().then((res)=>{
     //No DB Initiation error
     dbHandler.createAdmin().then(()=>{
-        app.listen(port, () => {
-            console.log("Server listening at http://localhost:"+port)
-        });
+        app.listen(port, () => console.log("Server listening at http://localhost:" + port));
     }).catch((err)=>{
         //Some Unforseen error
         console.log("Error creating default admin, server won't be ran \n: "+err);
