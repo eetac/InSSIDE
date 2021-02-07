@@ -6,14 +6,13 @@ const UserSchema: Schema = new Schema({
     username: { type: String, required: true, unique:true},
     contactInfo: {type:String,required:true},
     password: {type:String,required:true},
-    pubKey: {
-        publicexp:{type:String, required:false},
-        publicmod:{type:String, required:false}
-
+    publicKey: {
+        type: Buffer,
+        String,required:true
     },
-    privKey:{
-        privateexp:{type:String, required:false},//Encrypted with the system pubKey to have recovery option
-        publicmod:{type:String, required:false}
+    privateKey:{
+        type:Buffer,
+        String,required:true
     } 
 
 });

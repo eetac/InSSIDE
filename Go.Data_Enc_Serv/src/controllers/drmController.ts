@@ -2,7 +2,7 @@ import { Request, Response, json, NextFunction } from 'express';
 import { RSA } from '../lib/RSA';
 import * as bigintCryptoUtils from 'bigint-crypto-utils'
 import * as CryptoJS from 'crypto-js'
-import User from '../models/userHosp';//We send a message to the client
+import User from '../models/user';//We send a message to the client
 import { toJson } from 'typedjson';
 import { EncryptCases } from '../lib/EncryptCases';
 import { ConfigurationData } from '../lib/config';
@@ -117,7 +117,7 @@ async function getKeyOfCase(req: Request, res: Response) {
                     //We send the keys to decrypt 
                     //TRY DECRYPT
                     //console.log(cases[j])
-                    res.status(200).send({ "keyUsed": goDataId.keys[i].usedKey, "spCase": cases[j]  ,"isTheCreator": "y"});
+                  return res.status(200).send({ "keyUsed": goDataId.keys[i].usedKey, "spCase": cases[j]  ,"isTheCreator": "y"});
                     break;
                 }
                 else if((cases[j]["documents"][positionHash]["number"] == hashCase) &&(splitted[2] != username)){
@@ -125,7 +125,7 @@ async function getKeyOfCase(req: Request, res: Response) {
                     //This is for cases where we have done the merge and the data is not our data but we have permissions
                 }    
             }
-            res.status(404).send();
+            return res.status(404).send();
         }
         else {
             res.status(404).send();

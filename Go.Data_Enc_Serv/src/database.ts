@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
-import User from './models/userHosp';
+import User from './models/user';
 import { RSA } from './lib/RSA';
-import * as CryptoJS from 'crypto-js'
+
+const crypto = require("crypto");
 mongoose.set('useNewUrlParser', true);
 mongoose.set('useUnifiedTopology', true);
 mongoose.set('useCreateIndex', true);
@@ -41,7 +42,19 @@ function createAdmin():Promise<boolean>{
                 if(res==null){
                     // Admin not created in the DB
                     // Creating a new admin
-                    RSA.generateKeys().then((keys)=>{
+                    const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
+                        // The standard secure default length for RSA keys is 2048 bits
+                        modulusLength: 2048,
+                    });
+                    let password = CryptoJS.SHA256("admin").toString();
+                    let managerUser = new User({
+                        username :"admin",
+                        contactInfo: "admin@admin.com",
+                        password: password,
+                        publicKey: publicKey,
+                        privateKey: privateKey
+                    });
+                    /*RSA.generateKeys().then((keys)=>{
                         if(keys!=null){
                             //Parsing everything
                             let pubKey = {
@@ -77,7 +90,7 @@ function createAdmin():Promise<boolean>{
                     }).catch((err)=>{
                         reject( new Error( err ) );
                         return;
-                    });
+                    });*/
                 }else{
                     //No need to create admin,already exits!
                     console.log("Admin account already exists");
