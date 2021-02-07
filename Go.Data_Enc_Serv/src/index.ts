@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import router from './routes/index'
 import dbHandler from './database' 
-//Inicialización
+//Initiation
 const app = express();
 const port = 3000
 
@@ -28,8 +28,8 @@ dbHandler.initiateDB().then((res)=>{
     dbHandler.createAdmin().then(()=>{
         app.listen(port, () => console.log("Server listening at http://localhost:" + port));
     }).catch((err)=>{
-        //Some Unforseen error
-        console.log("Error creating default admin, server won't be ran \n: "+err);
+        //Some unexpected error occurred!
+        console.log("Error creating default admin, server won't be ran : "+err);
     });
 }).catch((error)=>{
     console.log('Connection Error w/DB \n: '+error);

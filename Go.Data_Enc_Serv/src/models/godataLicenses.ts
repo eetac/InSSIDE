@@ -1,5 +1,4 @@
-import {Schema, model} from 'mongoose'
-
+import mongoose, { Document, Schema } from 'mongoose';
 //USERS OF THE DRM SERVER
 const GoDataLicensesSchema: Schema = new Schema({
 
@@ -8,11 +7,20 @@ const GoDataLicensesSchema: Schema = new Schema({
     keys: [{
         hospitalName: { type: String, required: true},
             usedKey : { type: String, required: true}
-            
+
     }]
-    
-
 });
-
-
-export default model('GoDataLicenses', GoDataLicensesSchema);
+export interface key{
+    hospitalName: { type: String, required: true},
+    usedKey : { type: String, required: true}
+}
+//Interface for the User Document
+export interface IGoDataLicensesSchema extends Document {
+    caseId: string;
+    creatorEmail: string;
+    keys: Array<key>;
+}
+//Mongoose.model(name, [schema], [collectionName], [skipInit])
+export default mongoose.model<IGoDataLicensesSchema>('GoDataLicense', GoDataLicensesSchema,'GoDataLicenses');
+/*
+export default model('GoDataLicenses', GoDataLicensesSchema);*/

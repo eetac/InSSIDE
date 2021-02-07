@@ -1,21 +1,37 @@
-import {Schema, model} from 'mongoose'
-
+import mongoose, { Document, Schema } from 'mongoose';
 //USERS OF THE DRM SERVER
 const UserSchema: Schema = new Schema({
 
-    username: { type: String, required: true, unique:true},
-    contactInfo: {type:String,required:true},
-    password: {type:String,required:true},
+    username: {
+        type: String,
+        required: true,
+        unique:true
+    },
+    contactInfo: {
+        type:String,
+        required:true
+    },
+    password: {
+        type:String,
+        required:true
+    },
     publicKey: {
-        type: Buffer,
-        String,required:true
+        type: String,
+        required:true
     },
     privateKey:{
-        type:Buffer,
-        String,required:true
-    } 
-
+        type: String,
+        required:true
+    }
 });
-
-
-export default model('User', UserSchema);
+//Interface for the User Document
+export interface IUser extends Document {
+    username: string;
+    contactInfo: string;
+    password: string;
+    publicKey: string;
+    privateKey: string;
+}
+export default mongoose.model<IUser>('User', UserSchema,'users');
+/*
+export default model('User', UserSchema);*/

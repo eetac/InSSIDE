@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import User from './models/user';
+import User, { IUser } from "./models/user";
 import { RSA } from './lib/RSA';
-
+const bcrypt = require('bcrypt');
 const crypto = require("crypto");
 mongoose.set('useNewUrlParser', true);
 mongoose.set('useUnifiedTopology', true);
@@ -42,55 +42,36 @@ function createAdmin():Promise<boolean>{
                 if(res==null){
                     // Admin not created in the DB
                     // Creating a new admin
-                    const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
-                        // The standard secure default length for RSA keys is 2048 bits
-                        modulusLength: 2048,
-                    });
-                    let password = CryptoJS.SHA256("admin").toString();
-                    let managerUser = new User({
+                    const saltRounds = 10;
+                    let password = bcrypt.hashSync("admin",saltRounds);
+
+                    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',
+                        {   modulusLength: 4096,  // the length of your key in bits
+                            publicKeyEncoding: {
+                                type: 'spki',       // recommended to be 'spki' by the Node.js docs
+                                format: 'pem'
+                            },
+                            privateKeyEncoding: {
+                                type: 'pkcs8',      // recommended to be 'pkcs8' by the Node.js docs
+                                format: 'pem',
+                                //cipher: 'aes-256-cbc',   // *optional*
+                                //passphrase: 'top secret' // *optional*
+                            }
+                        });
+                    let managerUser:IUser = new User({
                         username :"admin",
                         contactInfo: "admin@admin.com",
                         password: password,
                         publicKey: publicKey,
                         privateKey: privateKey
                     });
-                    /*RSA.generateKeys().then((keys)=>{
-                        if(keys!=null){
-                            //Parsing everything
-                            let pubKey = {
-                                publicexp: keys.pubKey.e,
-                                publicmod: keys.pubKey.n
-                            };
-                            let privKey = {
-                                privateexp: keys.privKey.d,
-                                publicmod: keys.privKey.n
-                            };
-                            let password = CryptoJS.SHA256("admin").toString();
-                            let managerUser = new User({
-                                username :"admin",
-                                contactInfo: "admin@admin.com",
-                                password: password,
-                                pubKey: pubKey,
-                                privKey: privKey
-                            });
-                            //We need to has the password 
-                            
-                            managerUser.save().then((_) => {
-                                console.log("admin created with username:admin & password:admin; Remember to change!");
-                                resolve( true );
-                                return;
-                            }).catch((err) => {
-                                reject( new Error( err ) );
-                                return;
-                            });
-                        }else{
-                            reject( new Error( "Null RSA Keys Generated!" ) );
-                            return;
-                        }
-                    }).catch((err)=>{
+                    managerUser.save().then((_) => {
+                        console.log("admin created with username:admin & password:admin; Remember to change!");
+                        resolve( true );return;
+                    }).catch((err) => {
                         reject( new Error( err ) );
                         return;
-                    });*/
+                    });
                 }else{
                     //No need to create admin,already exits!
                     console.log("Admin account already exists");
@@ -108,4 +89,28 @@ function createAdmin():Promise<boolean>{
         }
     });
 }
+/*function encryptKeyRSA(publicKey: string, data: string){
+    return crypto.publicEncrypt(
+        {
+            key: publicKey,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: "sha256",
+        },
+        // We convert the data string to a buffer using `Buffer.from`
+        Buffer.from(data)
+    );
+}
+function decryptKeyRSA(privateKey: Buffer, encryptedData: Buffer){
+    return crypto.privateDecrypt(
+        {
+            key: privateKey,
+            // In order to decrypt the data, we need to specify the
+            // same hashing function and padding scheme that we used to
+            // encrypt the data in the previous step
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: "sha256",
+        },
+        encryptedData
+    );
+}*/
 export default { initiateDB,createAdmin };
