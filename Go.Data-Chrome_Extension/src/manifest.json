@@ -1,0 +1,27 @@
+{
+    "name": "GoData Anonymization",
+    "version": "1.0",
+    "description": "GoData Anonymization extension built by EETAC",
+    "manifest_version": 2,
+    "icons": {
+        "16": "./assets/Go.Data_Logo16.ico", 
+        "48": "./assets/Go.Data_Logo48.ico", 
+        "128": "./assets/Go.Data_Logo128.ico"
+    },
+    "background":{
+        "scripts":["background.js"],
+        "persistent": false
+    },
+    "permissions":[
+        "tabs",
+        "alarms",
+        "activeTab",
+        "https://ajax.googleapis.com/",
+        "https://cdnjs.cloudflare.com/"
+    ],
+    "browser_action": {
+        "default_title": "GoData",
+        "default_icon": "./assets/Go.Data_Logo.png"
+    },
+    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+}
