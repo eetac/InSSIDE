@@ -53,12 +53,12 @@ export class RegisterComponent implements OnInit {
           password: this.f.password.value
         }
         let user = JSON.stringify(loginJSON)
-        let keyJSON = data.privKey;
-        let key = JSON.stringify(keyJSON)
-        alert("This is your Private Key (store it securely): "+key)
+        let publicKey = data.publicKey;
+        let privateKey = data.privateKey;
+        alert("This is your Private Key (store it securely): "+ privateKey);
         localStorage.setItem('user',user);
-        localStorage.setItem('key',key);
-        
+        localStorage.setItem('privateKey',privateKey);
+        localStorage.setItem('publicKey',publicKey);
         this.router.navigate(['/home'])
       },
       error => {
