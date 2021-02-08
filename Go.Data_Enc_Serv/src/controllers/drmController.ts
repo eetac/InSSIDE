@@ -1,11 +1,12 @@
-import { Request, Response, json, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
-import User from '../models/user';//We send a message to the client
-import { toJson } from 'typedjson';
+import User, {IUser} from '../models/user';//We send a message to the client
 import { EncryptCases } from '../lib/EncryptCases';
-import { ConfigurationData } from '../lib/config';
-import GoDataLicenses from '../models/godataLicenses';
-import { bigintToText, textToBigint } from 'bigint-conversion';
+import { default as encryptRSA } from '../helpers/encryptRSA';
+import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicenses";
+const Bcrypt = require('bcrypt');
+const crypto = require("crypto");
+
 
 async function login(req: Request, res: Response, next: NextFunction) {
 
@@ -13,18 +14,20 @@ async function login(req: Request, res: Response, next: NextFunction) {
     if (!req.body.username || !req.body.password) {
         return res.status(400).json({ 'msg': 'You need to send username and password' });
     }
-    let tryUser = new User(await User.findOne({ username: req.body.username }));
-    let password = CryptoJS.SHA256(req.body.password).toString()
-    if (password == tryUser.get('password')) {
-        res.status(200).send();
-        //     token: jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: 60 }),
-        //     'message': 'probando'
-    }
-    else {
-        return res.status(400).send({ message: 'The username and password don\'t match.' });
-    }
-
-
+    User.findOne({ username: req.body.username }).then((user)=>{
+        if(user!=null){
+            if (Bcrypt.compareSync(req.body.password, user.password)) {
+                res.status(200).send({ message: 'Login Successfull' });
+            }
+            else {
+                return res.status(400).send({ message: 'The username and password don\'t match.' });
+            }
+        }else{
+            res.status(400).send({ message: 'Failed while trying to login, now user found' });
+        }
+    }).catch((err)=>{
+        return res.status(500).send({ message: 'Failed while trying to login' });
+    });
 }
 
 async function register(req: Request, res: Response) {
@@ -33,43 +36,43 @@ async function register(req: Request, res: Response) {
     console.log(req.body);
     let existUser = await User.findOne({ username: username });
     if (existUser) {
-        res.status(403).json({ message: "Already exist a user w/ this username" });
+        res.status(403).json({ message: "Already exist a user with this username" });
     }
     else {
-        let managerUser = new User(await User.findOne({ username: "admin" })); //We need the managerUser to encrypt the private key of other users
+        // We need the managerUser to encrypt the private key of other users
+        /*let managerUser = new User(await User.findOne({ username: "admin" }));*/
         //When we want to add new user we need to generate RSA keys
-        let keys = await RSA.generateKeys();
-        console.log('Adding User');
-
-
-        //We need to has the password 
-        let password = CryptoJS.SHA256(req.body.password).toString();
-
-        //Parsing everything
-        let pubKey = {
-            publicexp: keys.pubKey.e,
-            publicmod: keys.pubKey.n
-        }
-        let privKey = {
-            privateexp: keys.privKey.d,
-            publicmod: keys.privKey.n
-        }
-
-        let { username, contactInfo } = req.body;
-
-        let openUser = new User({ username, contactInfo, password, pubKey, privKey }); //The user that we send to the client without encrypting the privKey
-        console.log('Sin cifrar clave privada---> ' + privKey.privateexp)
-        privKey.privateexp = bigintCryptoUtils.modPow(privKey.privateexp, managerUser.get('pubKey.publicexp'), managerUser.get('pubKey.publicmod'));//encrypt w/ pubkey of System
-        //The user that we save in the DB w/ the privKey encrypted
-        console.log(username)
-        let newUser = new User({ username, contactInfo, password, pubKey, privKey });
-
-        //let priv = bigintCryptoUtils.modPow(privKey.privateexp,managerUser.get('privKey.privateexp'),managerUser.get('pubKey.publicmod'));//decrypt w/ pubkey of System
-        //console.log("ENCRYPTADA Y DESENCRYPTADA SON IGUALES__>"+priv)
+        //We need to hash the password
+        const saltRounds = 10;
+        let password = Bcrypt.hashSync(req.body.password,saltRounds);
+        // RSA Private and Public Key in PEM format, if we need to export the key as a file ##FUTURE!
+        const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',
+            {   modulusLength: 4096,  // the length of your key in bits
+                publicKeyEncoding: {
+                    type: 'spki',       // recommended to be 'spki' by the Node.js docs
+                    format: 'pem'
+                },
+                privateKeyEncoding: {
+                    type: 'pkcs8',      // recommended to be 'pkcs8' by the Node.js docs
+                    format: 'pem',
+                    //cipher: 'aes-256-cbc',   // *optional*
+                    //passphrase: 'top secret' // *optional*
+                }
+            });
+        let newUser:IUser = new User({
+            username :req.body.username,
+            contactInfo: req.body.contactInfo,
+            password: password,
+            publicKey: publicKey,
+            privateKey: privateKey
+        });
+        // New user will be sent to the user who just registered, on top of that we need to encrypt the private key itself
+        // with the user password, so that even on a db leak, all of the data is protected by hospital key!
+        // FUTURE--> For now no encryption, as the hospital should be able to ask for a password change!
 
         newUser.save().then((data) => {
             console.log('User added successfully');
-            res.status(201).json(openUser);
+            res.status(201).json(newUser);
         }).catch((err) => {
             console.log(err)
             res.status(500).json({ message: err });
@@ -80,121 +83,115 @@ async function register(req: Request, res: Response) {
 
 async function getKeyOfCase(req: Request, res: Response) {
     //Hospital ask for the decryption key of a case and DRM return the key encrypted with the pubKey for security reasons
-    const config: ConfigurationData = new ConfigurationData();
-    let hashCase = req.body.hashCase;//req.params.hashCase;
-    let username = req.body.username; //We get this value from the token
+    let caseId = req.body.caseId;//req.params.hashCase;
+    //TODO: Future get from token, now just testing...
+    let username:string = req.body.username;
 
-    //In case there is a problem finding the hash case
-    try {
-        let goDataId = new GoDataLicenses(await GoDataLicenses.findOne({ hash: hashCase, creatorEmail:username})).toJSON();
-        let i = 0;
-        while (goDataId.keys[i].hospitalName != username) {
-            i = i + 1;
-        }
-        if (goDataId.keys[i].hospitalName == username) {
-            // let managerUser = new User(await User.findOne({ username: "admin" }));
-            // let useruser = new User(await User.findOne({ username: username }));
-            // let privateKeyOfUSer: bigint = bigintCryptoUtils.modPow(useruser.get('privKey.privateexp'), managerUser.get('privKey.privateexp'), managerUser.get('pubKey.publicmod'))
-            // let symmetricKey: bigint = bigintCryptoUtils.modPow(goDataId.keys[i].usedKey, privateKeyOfUSer, useruser.get('pubKey.publicmod'))
-            // console.log(bigintToText(symmetricKey)) //Works --> Symmetric Key obtained decrypting first the privatekey of user
-            // that has been encrypted with RSA of admin and the decrypting with the privateKey of User
-
-            //Tenemos que devolver el caso encryptado para reducir procesos en la extensión
-            const encrypt: EncryptCases = new EncryptCases;
-            let cases = await encrypt.getCases()
-            for (let j = 0; j < cases.length; j++) {
-                let positionHash = 0; // To then return if the hash is the correct one
-                while (cases[j]["documents"][positionHash]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER") {
-                    positionHash = positionHash + 1;
+        GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
+            if(goDataLicense!=null){
+                // GoDataLicense found...
+                let i = 0;
+                // Find where the hospitalName is equal to username, inside the licenses...
+                while (goDataLicense.keys[i].hospitalName.toString() != username) {
+                    i = i + 1;
+                    if(goDataLicense.keys.length==i){
+                        return res.status(404).send({"error": "Don't have permission for the case"});
+                    }
                 }
-                //Case 1 --> The case to decrypt is the one creat
-                let toBeSplit = cases[j]["firstName"] //Check for email and encrypted field comparision
-                let splitted = toBeSplit.split("/");
-                console.log(splitted[2])
-                if ((cases[j]["documents"][positionHash]["number"] == hashCase) &&(splitted[2] == username)) { //Two conditions to avoid problems with double identities
-                    //We send the keys to decrypt 
-                    //TRY DECRYPT
-                    //console.log(cases[j])
-                  return res.status(200).send({ "keyUsed": goDataId.keys[i].usedKey, "spCase": cases[j]  ,"isTheCreator": "y"});
-                    break;
+                if (goDataLicense.keys[i].hospitalName.toString() == username) {
+                    //We will return the key encrypted with the public key, so only the
+                    // hospital or user with private key can decrypt and get the symmetric key!
+                    const encrypt: EncryptCases = new EncryptCases;
+                    encrypt.getCase(caseId).then((caseResponse) => {
+                        if (caseResponse.error == null) {
+                            //No error in the response, means correct result
+                            return res.status(200).send({
+                                "keyUsed": goDataLicense.keys[i].usedKey,
+                                "spCase": caseResponse
+                            });
+                        } else {
+                          return res.status(404).send({"error": "Case not found, erroneous id!"});
+                        }
+                    }).catch((err) => {
+                        //Some error, can't retrieve case
+                        console.log(err);
+                        return res.status(500).send({"error": "Server error, while trying to find case!"});
+                    });
+                }else{
+                // User hasn't got permission to view the case nether the key
+                    return res.status(404).send({"error": "Don't have permission for the case"});
                 }
-                else if((cases[j]["documents"][positionHash]["number"] == hashCase) &&(splitted[2] != username)){
-                    throw new Error('Go and check if you are inside other permissions'); 
-                    //This is for cases where we have done the merge and the data is not our data but we have permissions
-                }    
+            }else{
+               res.status(404).send({"error": "Case not found, erroneous id!"});
             }
-            return res.status(404).send();
-        }
-        else {
-            res.status(404).send();
-        }
-    }
-    catch (error) {
-        //If is not the creator we need to check for the hash Case if has permission from other hospital
-        let goDataId1 = new GoDataLicenses(await GoDataLicenses.findOne({hash: hashCase, "keys.hospitalName":username })).toJSON();
-        console.log("CASO EN EL QUE NOS HAN DADO PERMISO-->"+goDataId1.hash)
-        let i = 0;
-        while (goDataId1.keys[i].hospitalName != username) {
-            i = i + 1;
-        }
-        if (goDataId1.keys[i].hospitalName == username) {
-            //Tenemos que devolver el caso encryptado para reducir procesos en la extensión
-            const encrypt: EncryptCases = new EncryptCases;
-            let cases = await encrypt.getCases()
-            for (let j = 0; j < cases.length; j++) {
-                let positionHash = 0; // To then return if the hash is the correct one
-                while (cases[j]["documents"][positionHash]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER") {
-                    positionHash = positionHash + 1;
-                }
-                let toBeSplit = cases[j]["firstName"] //Check for email and encrypted field comparision
-                let splitted = toBeSplit.split("/");
-                console.log(splitted[2])
-                if ((cases[j]["documents"][positionHash]["number"] == hashCase) &&(splitted[2] == goDataId1.creatorEmail)) { //Two conditions to avoid problems with double identities in this case the email is the email of the creator
-                    //We send the keys to decrypt 
-                    //TRY DECRYPT
-                    //console.log(cases[j])
-                    res.status(200).send({ "keyUsed": goDataId1.keys[i].usedKey, "spCase": cases[j] ,isTheCreator: "n",emailCreator : goDataId1.creatorEmail}); //TO THEN DECRYPT IN THE CORRECT WAY WE NEED TO KNOW IF ITS IS THE CREATOR OR NOY
-                    break;
-                }
-            }
-            res.status(404).send();
-        }
-        else {
-            res.status(404).send();
-        }
-        res.status(500).send()
-
-    }
-
+        }).catch((err)=>{
+            console.log("Error while getting GoDataLicense "+err);
+            return res.status(500).send({"error": "Server error, please try again"});
+        });
 }
 
 async function dataKeyTransfer(req:Request, res: Response){
     console.log("Arrived Transfer Solicited")
-    //Transferring the Key from one hospital no another
-    let hashCase = req.body.hashCase;
-    let username = req.body.username; 
-    let usernameToTransfer = req.body.usernameToTranfer;
-    let rootUser = new User(await User.findOne({ username: "admin"})).toJSON(); //Needed to obtain the private key --> It can be changed to send directly form extension
-    let targetUser =  new User(await User.findOne({ username: usernameToTransfer})).toJSON();
-    let identityToTransfer = new GoDataLicenses(await GoDataLicenses.findOne({ hash: hashCase , creatorEmail: username })) //To obtain the password
-    let JsonLicenseToTransfer = identityToTransfer.toJSON()
-    console.log(JsonLicenseToTransfer)
-    //Decrypt Sym Key
-    let privateKeyOfUser: bigint = bigintCryptoUtils.modPow(JsonLicenseToTransfer.keys[0].usedKey, rootUser.privKey.privateexp, rootUser.privKey.publicmod)
-    let newEntryOfTransfer = {
-        hospitalName: usernameToTransfer ,
-        usedKey: bigintCryptoUtils.modPow(privateKeyOfUser, targetUser.pubKey.publicexp, targetUser.pubKey.publicmod) ,
+    //Only an existent user of a case, can transfer the key to some other hospital
+    let username = req.body.username; // TODO: Future retrieve from token!
+    let usernameToTransfer = req.body.usernameToTransfer; // Directly in the json as nothing personal
+    let caseId = req.body.caseId;
+    //We need both the private key of the existent user and the private key of the transfer user
+    // First we find that the username exists
+    let existentUser = await User.findOne({ username: username});
+    if(existentUser==null){
+        return res.status(400).send({"error": "Cannot transfer,User doesn't exist"});
     }
-    JsonLicenseToTransfer["keys"].push(newEntryOfTransfer)
-    //We overwrite with the new keys
-    identityToTransfer.overwrite(JsonLicenseToTransfer);
-    //We save the data 
-    await identityToTransfer.save().then((data) => {
-        console.log('Transferred Info successfully');
-        res.status(200).send();
-    }).catch((err) => {
-        console.log(err)
-        res.status(500).json({ message: err });
-    })
+    let targetUser =  await User.findOne({ username: usernameToTransfer});
+    // Contains the symmetric key!
+    GoDataLicenses.findOne({ caseId: caseId}).then((licenseToTransfer)=>{
+        if(licenseToTransfer!=null){
+           /* let JsonLicenseToTransfer = licenseToTransfer;
+            console.log(JsonLicenseToTransfer);*/
+            // GoDataLicense found...
+            let i = 0;
+            // Find where the hospitalName is equal to username, inside the licenses...
+            while (licenseToTransfer.keys[i].hospitalName.toString() != username) {
+                i = i + 1;
+                if(licenseToTransfer.keys.length==i){
+                    return res.status(404).send({"error": "Don't have permission for the case"});
+                }
+            }
+            if (licenseToTransfer.keys[i].hospitalName.toString() == username) {
+                //User exists
+                if(targetUser!=null){
+                    //Target user actually exists
+                    // Step1. Decrypt the symmetric key from the License
+                    let encryptedKey:string = licenseToTransfer.keys[i].usedKey;
+                    // @ts-ignore
+                    let keyDecrypted:string = encryptRSA.decryptKeyRSA(existentUser.privateKey,encryptedKey);
+                    // Step2. Encrypt the symmetric key from the public key of transferUser
+                    let keyEncrypted:string = encryptRSA.encryptKeyRSA(targetUser.publicKey,keyDecrypted);
+                    // Step3. Add they key to the License with other keys
+                    let newKey =
+                        {
+                            hospitalName: targetUser.username,
+                            usedKey: keyEncrypted
+                        };
+                    const queryUpdate = { _id: licenseToTransfer._id };
+                    GoDataLicenses.updateOne( queryUpdate, { "$push": { keys: newKey } }).then( (updateRes)=> {
+                        //console.debug( "Chat added to user:  ", updateRes );
+                   // Step4. Notify user, that the transfer was successfull
+                        return res.status(201).send({"message": "Transfer completed successfully"});
+                    } ).catch( ( err ) =>
+                    {
+                        return res.status(400).send({"error": "No update completed, unknown error while updating"});
+                    });
+                }else{
+                    return res.status(400).send({"error": "Cannot transfer,TargetUser doesn't exist"});
+                }
+            }else{
+                return res.status(404).send({"error": "Cannot transfer,User doesn't have permission either"});
+            }
+        }else{
+            return res.status(404).send({"error": "No license exists, with this caseId"});
+        }
+    });
+
 }
 export default { login, register, getKeyOfCase, dataKeyTransfer }

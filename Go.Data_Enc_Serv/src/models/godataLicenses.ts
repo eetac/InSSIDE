@@ -11,8 +11,8 @@ const GoDataLicensesSchema: Schema = new Schema({
     }]
 });
 export interface key{
-    hospitalName: { type: String, required: true},
-    usedKey : { type: String, required: true}
+    hospitalName: string,
+    usedKey : string
 }
 //Interface for the User Document
 export interface IGoDataLicensesSchema extends Document {

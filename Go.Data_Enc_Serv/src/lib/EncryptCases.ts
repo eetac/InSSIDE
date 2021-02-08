@@ -2,17 +2,12 @@
 import {Request, Response} from "express";
 import * as http from 'typed-rest-client/HttpClient';
 import {IHeaders, IHttpClientResponse} from "typed-rest-client/Interfaces";
-
-
 import {ConfigurationData} from './config'
 
 import crypto from 'crypto'
 import User, { IUser } from "../models/user";
-import * as bigintCryptoUtils from 'bigint-crypto-utils'
-import {bigintToText} from "bigint-conversion";
-
 import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicenses";
-
+import { default as encryptRSA } from '../helpers/encryptRSA';
 const config: ConfigurationData = new ConfigurationData();
 const IV_LENGTH = 16;
 export class EncryptCases {
@@ -79,13 +74,13 @@ export class EncryptCases {
         //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
         await User.findOne({ username: "admin" }).then((managerUser)=>{
           if(managerUser!=null){
-          let keyEncrypted:string = this.encryptKeyRSA(managerUser.publicKey,encryptionKey);
+          let keyEncrypted:string = encryptRSA.encryptKeyRSA(managerUser.publicKey,encryptionKey);
             User.findOne({ username: creatorEmail }).then((hospUser)=>{
               if(hospUser!=null){
                 /*let secret = encryptKeyRSA(publicKey,"secret-string");
                 let secretBuffer = decryptKeyRSA(privateKey,secret);
                 let secretInString = Buffer.from(secretBuffer).toString('utf-8');*/
-                let keyEncryptedHospital:string = this.encryptKeyRSA(hospUser.publicKey,encryptionKey); /*this.encryptKeyRSA(hospUser.publicKey,encryptionKey);*/
+                let keyEncryptedHospital:string = encryptRSA.encryptKeyRSA(hospUser.publicKey,encryptionKey); /*this.encryptKeyRSA(hospUser.publicKey,encryptionKey);*/
                 //Both admin & hospitalUser exists
                 keys = [
                   {
@@ -155,82 +150,115 @@ export class EncryptCases {
   //Function where the user pass the id of a case and return the case decrypted
   public async decryptCase(req: Request, res: Response) {
 
-    let spCase = await this.getSpecificCase(req.body.ID);
+   /* let spCase = await this.getSpecificCase(req.body.caseId);*/
+    let username = req.body.username; //TODO: From Token in future release! temporary only!
+    let caseId = req.body.caseId;
     //Once we have the case we need to check to get the key to decrypt that is encrypted with pubkey of Hosp
 
     //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
     //Just for test we put the key already decrypted
     //keyDecrypted = af44f60c2c308c7904abaa211970c63201114eaf6a0ede5724b3fd9506967da9
-    let managerUser = await User.findOne({ username: "admin"});
-   /* let userUser = new User(await User.findOne({ username: "admin" }));*/
-    let goDataId = await GoDataLicenses.findOne({ caseId: req.body.ID});
-    // @ts-ignore
-    let encryptedKey:string = goDataId.keys[0].usedKey;
-    //let encryptedBufferKey:Buffer = new Buffer(encryptedKey, 'base64');
-    // @ts-ignore
-    let keyDecrypted:string = EncryptCases.decryptKeyRSA(managerUser.privateKey,encryptedKey);
+    User.findOne({ username: username}).then((hospitalUser)=>{
+      if(hospitalUser!=null){
+        GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
+          if(goDataLicense!=null){
+            // GoDataLicense found...
+            let i = 0;
+            // Find where the hospitalName is equal to username, inside the licenses...
+            while (goDataLicense.keys[i].hospitalName.toString() != username) {
+              i = i + 1;
+              if(goDataLicense.keys.length==i){
+                return res.status(404).send({"error": "Don't have permission for the case"});
+              }
+            }
+            if (goDataLicense.keys[i].hospitalName.toString() == username) {
+              //We will return the key encrypted with the public key, so only the
+              // hospital or user with private key can decrypt and get the symmetric key!
+              const encrypt: EncryptCases = new EncryptCases;
+              encrypt.getCase(caseId).then((spCase) => {
+                if (spCase.error == null) {
+                  //No error in the response, means correct result
+                  //Both username and case exists
+                  let encryptedKey:string = goDataLicense.keys[i].usedKey;
+                  //let encryptedBufferKey:Buffer = new Buffer(encryptedKey, 'base64');
 
-    console.log("key Decrypted: " +keyDecrypted);
-
-    //b,e,n  --Inv-> a,n(private_modulo)
-    //let key: string = "191606092ca12f97";
-    //key ="191606092ca12f97"; What the decryption should look like!
-    config.sensitiveData.forEach(sensitiveField => {
-      let subSensitiveField = sensitiveField.split(",");
-       //If there is a document we have address,phoneNumber
-      if (subSensitiveField.length == 1) {
-        //If the beginning of the value is equal to /ENC/ we decrypt the field
-        if (spCase[sensitiveField].substring(0, 5) == "/ENC/") {
-          let sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split("/");
-          let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-          let encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue,);
-          /*let valueToDecrypt = spCase[sensitiveField].substring(42,)*///from 42 because after /ENC/ we have the id of the creator
-          let decryptedField: String = EncryptCases.decrypt(encryptedFieldValue, keyDecrypted);
-          spCase[sensitiveField] = decryptedField
-        }
-      }
-      else {
-          // Has sensitiveField configured in config with internal subfields of the objects stored in a array
-          // Documents which contains a list of documents such as nationality, archived_id etc, so
-          // need to go over each document and encrypt the number of that document which we want to protect
-          // Also applies for addresses, which might contain phone and addresses
-          let fieldObjectsLength = spCase[subSensitiveField[0]].length;
-          for (let subSensitiveFields = 0; subSensitiveFields < fieldObjectsLength; subSensitiveFields++) {
-            let sensitiveFieldValueSplit = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].split("/");
-            let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-            let encryptedFieldValue = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
-            if (sensitiveFieldValueSplit[1] == "ENC") { //if is encrypted
-              let decryptedField: String = EncryptCases.decrypt(encryptedFieldValue, keyDecrypted);
-              spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+                  let keyDecrypted:string = encryptRSA.decryptKeyRSA(hospitalUser.privateKey,encryptedKey);
+                  console.log("key Decrypted: " +keyDecrypted);
+                  //Decrypting
+                  config.sensitiveData.forEach(sensitiveField => {
+                    let subSensitiveField = sensitiveField.split(",");
+                    //If there is a document we have address,phoneNumber
+                    if (subSensitiveField.length == 1) {
+                      //If the beginning of the value is equal to /ENC/ we decrypt the field
+                      if (spCase[sensitiveField].substring(0, 5) == "/ENC/") {
+                        let sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split("/");
+                        let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+                        let encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue,);
+                        /*let valueToDecrypt = spCase[sensitiveField].substring(42,)*///from 42 because after /ENC/ we have the id of the creator
+                        let decryptedField: String = EncryptCases.decrypt(encryptedFieldValue, keyDecrypted);
+                        spCase[sensitiveField] = decryptedField
+                      }
+                    }
+                    else {
+                      // Has sensitiveField configured in config with internal subfields of the objects stored in a array
+                      // Documents which contains a list of documents such as nationality, archived_id etc, so
+                      // need to go over each document and encrypt the number of that document which we want to protect
+                      // Also applies for addresses, which might contain phone and addresses
+                      let fieldObjectsLength = spCase[subSensitiveField[0]].length;
+                      for (let subSensitiveFields = 0; subSensitiveFields < fieldObjectsLength; subSensitiveFields++) {
+                        let sensitiveFieldValueSplit = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].split("/");
+                        let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+                        let encryptedFieldValue = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
+                        if (sensitiveFieldValueSplit[1] == "ENC") { //if is encrypted
+                          let decryptedField: String = EncryptCases.decrypt(encryptedFieldValue, keyDecrypted);
+                          spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+                        }
+                      }
+                    }
+                  });
+                  res.status(200).send(spCase);
+                } else {
+                  return res.status(404).send({"error": "Case not found, erroneous id!"});
+                }
+              }).catch((err) => {
+                //Some error, can't retrieve case
+                console.log(err);
+                return res.status(500).send({"error": "Server error, while trying to find case!"});
+              });
+            }else{
+              // User hasn't got permission to view the case nether the key
+              return res.status(404).send({"error": "Don't have permission for the case"});
+            }
+          }else{
+            res.status(404).send({"error": "Case not found, erroneous id!"});
           }
-        }
+        }).catch((err)=>{
+          console.log("Error while getting GoDataLicense "+err);
+          return res.status(500).send({"error": "Server error, please try again"});
+        });
+      }else{
+        return res.status(404).send({"error": "User doesn't exist"});
       }
+    }).catch((err)=>{
+      return res.status(500).send({"error": "Server error, please check the fields are as required"});
     });
-    res.status(200).send(spCase);
+
   }
-  private encryptKeyRSA(publicKey: string, data: string):string{
-    return crypto.publicEncrypt(
-        {
-          key: publicKey,
-          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-          oaepHash: "sha256",
-        },
-        // We convert the data string to a buffer using `Buffer.from`
-        Buffer.from(data)
-    ).toString('base64');
-  }
-  private static decryptKeyRSA(privateKey: string, encryptedData: string):string{
-    return crypto.privateDecrypt(
-        {
-          key: privateKey,
-          // In order to decrypt the data, we need to specify the
-          // same hashing function and padding scheme that we used to
-          // encrypt the data in the previous step
-          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-          oaepHash: "sha256",
-        },
-        new Buffer(encryptedData, 'base64')
-    ).toString();
+
+  public async getCase(caseId:string): Promise<any>{
+    return new Promise((resolve,reject )=> {
+      //First we get the token then get the cases
+      this.auth().then((token)=>{
+        const url: string = `${config.URL}/outbreaks/${config.OUTBREAK_ID}/cases/${caseId}?access_token=${token}`;
+        this.doGet(url).then((response)=>{
+          return resolve(JSON.parse(response));
+        }).catch((err)=>{
+          return reject(err);
+        })
+      }).catch((err)=>{
+        return reject(err);
+      });
+    });
   }
   public async getCases(): Promise<any> {
     //First we get the token then get the cases
@@ -262,7 +290,7 @@ export class EncryptCases {
   });
   }
 
-  private static encrypt(text:string, ENCRYPTION_KEY:string, iv:Buffer) {
+  public static encrypt(text:string, ENCRYPTION_KEY:string, iv:Buffer) {
     const algorithm = 'aes-256-ctr';
     //let iv = crypto.randomBytes(IV_LENGTH);
     let cipher = crypto.createCipheriv(algorithm, Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
@@ -271,7 +299,7 @@ export class EncryptCases {
     return iv.toString('hex') + ':' + encrypted.toString('hex');
   }
 
-  private static decrypt(encryptText:string, ENCRYPTION_KEY:string) {
+  public static decrypt(encryptText:string, ENCRYPTION_KEY:string) {
     const algorithm = 'aes-256-ctr';
     let textParts = encryptText.split(':');
     // @ts-ignore
