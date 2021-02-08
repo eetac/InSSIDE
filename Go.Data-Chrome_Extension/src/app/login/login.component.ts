@@ -24,14 +24,13 @@ export class LoginComponent implements OnInit {
   ngOnInit(): void {
     this.loginForm = this.formBuilder.group({
       username: ['', Validators.required,Validators.email],
-      password: ['', Validators.required],
-      privateKey: ['',Validators.required]
+      password: ['', Validators.required]
     });
   }
   // Returns directly the controls of the form
   get f() { return this.loginForm.controls; }
 
-    login() {
+  login() {
       this.submitted = true;
 
       // stop here if form is invalid
@@ -44,13 +43,14 @@ export class LoginComponent implements OnInit {
         username: this.f.username.value,
         password: this.f.password.value
       }
-      let key = this.f.privateKey.value;
-      localStorage.setItem('key',key);
+      
       this.initService.login(loginJSON).subscribe(
          data => {
-             let storedJSON = JSON.stringify(loginJSON)
-             localStorage.setItem('user',storedJSON);
-          this.router.navigate(['/home'])
+          console.log(data.status);
+           console.log(data);
+          let storedJSON = JSON.stringify(loginJSON);
+          localStorage.setItem('user',storedJSON);
+          this.router.navigate(['/home']);
         },
         error => {
             alert(error.message);

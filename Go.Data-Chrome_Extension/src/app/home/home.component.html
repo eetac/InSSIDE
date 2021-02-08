@@ -1,11 +1,11 @@
 <div class="container" *ngIf="userActive">
     <div class="row">
         <div class="col-sm-6">
-            <h5>Obtain Key to Decrypt</h5>
-            <form [formGroup]="homeForm" (ngSubmit)="getKey()">
+            <h5>Decryption via DRM Server</h5>
+            <form [formGroup]="decryptForm" (ngSubmit)="decryptCase()">
                 <div class="form-group">
-                    <label for="hashCase">Hash Case</label>
-                    <input type="hashCase" formControlName="hashCase" class="form-control" />
+                    <label for="caseId">Case Id</label>
+                    <input type="caseId" formControlName="caseId" class="form-control" />
                 </div>
                 <div class="form-group">
                     <button class="btn btn-primary">
@@ -16,7 +16,7 @@
         </div>
         <div class="col-sm-6">
             <h5>Tranfer Permissions to Hospital</h5>
-            <form [formGroup]="homeForm" (ngSubmit)="shareAccesToHospitals()">
+            <form [formGroup]="transferForm" (ngSubmit)="shareAccesToHospitals()">
                 <div class="form-group">
                     <label for="usernameToTranfer">Destination Hospital</label>
                     <input type="usernameToTranfer" formControlName="usernameToTranfer" class="form-control" />
@@ -37,16 +37,16 @@
         <th *ngFor="let column of headers">
             {{column}}
         </th>
-        <tr *ngFor="let row of rows">
-            <td *ngFor="let column of headers">
-                {{row[column]}}
-            </td>
+        
+        <tr *ngFor="let propertyField of decryptedData | keyvalue">
+            <td>{{propertyField.key}}</td>
+            <td>{{propertyField.value}}</td>
         </tr>
     </table>
     <br>
     <br>
     <br>
-    <div class="card border-primary mb-3" style="max-width: 50rem">
+    <!-- <div class="card border-primary mb-3" style="max-width: 50rem">
         <div class="card-header">Private Key</div>
         <div *ngIf="hidePrivKey" class="card-body text-primary">
             <p class="card-text">{{privateKey}}</p>
@@ -54,10 +54,10 @@
         <button (click)="hidePrivateKey()" class="btn btn-primary">
             Hide
         </button>
-    </div>
+    </div> -->
     <!-- This case appear if the user try to access home without being login-->
     <div class="container" *ngIf="!userActive">
         <div>
-            <h5>You need to be login in order to start decrypting data</h5>
+            <h5>You need to be login first, before coming to home!</h5>
         </div>
     </div>

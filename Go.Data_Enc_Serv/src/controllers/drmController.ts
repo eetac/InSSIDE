@@ -17,15 +17,19 @@ async function login(req: Request, res: Response, next: NextFunction) {
     User.findOne({ username: req.body.username }).then((user)=>{
         if(user!=null){
             if (Bcrypt.compareSync(req.body.password, user.password)) {
+                console.log("Login Successfull");
                 res.status(200).send({ message: 'Login Successfull' });
             }
             else {
+                console.log("Login Failed, The username and password don\'t match.");
                 return res.status(400).send({ message: 'The username and password don\'t match.' });
             }
         }else{
+            console.log("Login Failed, Failed while trying to login, now user found");
             res.status(400).send({ message: 'Failed while trying to login, now user found' });
         }
     }).catch((err)=>{
+        console.log("Login Failed, Failed while trying to login");
         return res.status(500).send({ message: 'Failed while trying to login' });
     });
 }
@@ -131,10 +135,11 @@ async function getKeyOfCase(req: Request, res: Response) {
 }
 
 async function dataKeyTransfer(req:Request, res: Response){
-    console.log("Arrived Transfer Solicited")
+
     //Only an existent user of a case, can transfer the key to some other hospital
     let username = req.body.username; // TODO: Future retrieve from token!
     let usernameToTransfer = req.body.usernameToTransfer; // Directly in the json as nothing personal
+    console.log("Transfer Solicited for "+usernameToTransfer);
     let caseId = req.body.caseId;
     //We need both the private key of the existent user and the private key of the transfer user
     // First we find that the username exists

@@ -170,7 +170,7 @@ export class EncryptCases {
     let username = req.body.username; //TODO: From Token in future release! temporary only!
     let caseId = req.body.caseId;
     //Once we have the case we need to check to get the key to decrypt that is encrypted with pubkey of Hosp
-
+    let decryptedCaseWithSensitiveFields:any = {caseId : req.body.caseId};
     //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
     //Just for test we put the key already decrypted
     //keyDecrypted = af44f60c2c308c7904abaa211970c63201114eaf6a0ede5724b3fd9506967da9
@@ -212,7 +212,8 @@ export class EncryptCases {
                         let encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue,);
                         /*let valueToDecrypt = spCase[sensitiveField].substring(42,)*///from 42 because after /ENC/ we have the id of the creator
                         let decryptedField: String = EncryptCases.decrypt(encryptedFieldValue, keyDecrypted);
-                        spCase[sensitiveField] = decryptedField
+                        //spCase[sensitiveField] = decryptedField
+                        decryptedCaseWithSensitiveFields[sensitiveField] = decryptedField;
                       }
                     }
                     else {
@@ -227,12 +228,13 @@ export class EncryptCases {
                         let encryptedFieldValue = spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
                         if (sensitiveFieldValueSplit[1] == "ENC") { //if is encrypted
                           let decryptedField: String = EncryptCases.decrypt(encryptedFieldValue, keyDecrypted);
-                          spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+                          //spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+                          decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
                         }
                       }
                     }
                   });
-                  res.status(200).send(spCase);
+                  res.status(200).send(decryptedCaseWithSensitiveFields);
                 } else {
                   return res.status(404).send({"error": "Case not found, erroneous id!"});
                 }

@@ -12,64 +12,61 @@ import * as CryptoJS from 'crypto-js'
 })
 export class HomeComponent implements OnInit {
   //Table
-  headers = ["CIP","Fullname","Phone Number"];
-  rows = []
+  headers = ["Property","Sensitive Data"];
+  decryptedData = {};
 
   hidePrivKey:boolean;
-  public sensitiveData = ["firstName","middleName","lastName","addresses,phoneNumber"]
+  /* public sensitiveData = ["firstName","middleName","lastName","addresses,phoneNumber"] */
   userActive: boolean;
-  privateKey = "undefined";
-  homeForm: FormGroup;
+  decryptForm: FormGroup;
+  transferForm: FormGroup;
   constructor(
     private formBuilder: FormBuilder,
     private initService: InitService
   ) { }
 
   ngOnInit(): void {
-   this.hidePrivKey = true;
     this.userStatus()
-    this.homeForm = this.formBuilder.group({
-      privateKey: ['undefined', [Validators.required]],
-      hashCase: ['', [Validators.required]],
-      usernameToTranfer: ['',[Validators.required]]
+    this.decryptForm = this.formBuilder.group({
+      caseId: ['', [Validators.required]]
+    });
+    this.transferForm = this.formBuilder.group({
+      usernameToTranfer: ['', [Validators.required]]
     });
   }
 
-  get f() { return this.homeForm.controls; }
+  get fdecryptForm() { return this.decryptForm.controls; }
+  get ftransferForm() { return this.transferForm.controls; }
 
   userStatus() {
 
     let userData = JSON.parse(localStorage.getItem('user'));
-    let key = JSON.parse(localStorage.getItem('key'));
-    console.log(key)
-    if (userData == null || key == null) {
+    if (userData == null) {
       this.userActive = false
     }
     else {
       this.userActive = true;
-      this.privateKey = localStorage.getItem('key')
     }
   }
   copyToClipboard() {
 
   }
   getKey() {
-    if (this.f.hashCase.value != "") {
+    if (this.fdecryptForm.caseId.value != "" ) {
 
       let username = JSON.parse(localStorage.getItem('user')).username
       console.log('USERNAME ' + username)
       let getKeyJSON = {
         username: username,
-        hashCase: this.f.hashCase.value,
+        caseId: this.fdecryptForm.caseId.value,
       }
       this.initService.getKey(getKeyJSON).subscribe(
         data => {
           console.log("RECEIVED")
-            let res = JSON.stringify(data)
+            /* let res = JSON.stringify(data) */
             console.log(data)
-            let key = this.decryptSymKey(data.keyUsed)
-
-            this.decryptCase(key,data)
+            /* let key = this.decryptSymKey(data.keyUsed)
+            this.decryptCase(key,data) */
        },
        error => {
            alert(error.message);
@@ -80,22 +77,51 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  decryptSymKey(keyEncrypted: bigint){
+  /* decryptSymKey(keyEncrypted: bigint){
     console.log(keyEncrypted);
     let privUser = JSON.parse(localStorage.getItem('key'));
     let symmetricKey : bigint = bigintCryptoUtils.modPow(keyEncrypted, privUser.privateexp,privUser.publicmod )
     console.log(bigintToText(symmetricKey))
     return bigintToText(symmetricKey);
-  }
+  } */
+  decryptCase() {
 
-  decryptCase(key: string, data:any){
-    let username;
-    if(data.isTheCreator == "y"){
-      username = JSON.parse(localStorage.getItem('user')).username
+    // stop here if form is invalid
+    if (this.fdecryptForm.invalid || this.ftransferForm.invalid) {
+        return;
     }
+
+/*     this.loading = true; */
+    let decryptJSON = {
+      username: JSON.parse(localStorage.getItem('user')).username,
+      caseId: this.fdecryptForm.caseId.value
+    }
+    
+    this.initService.decryptCase(decryptJSON).subscribe(
+       data => {
+        console.log(data.status);
+        console.log(data);
+        // we have the decrypted data
+        this.decryptedData = data;
+        /* 
+        console.log("After parsing");
+        console.log(this.decryptCase);
+         */        
+        
+      },
+      error => {
+          alert(error.message);
+         /*  this.loading = false; */
+      });
+}
+  /* decryptCase(key: string, data:any){
+    let username;
+     if(data.isTheCreator == "y"){ 
+      username = JSON.parse(localStorage.getItem('user')).username
+     }
     else{ //If is not the creator we need to split by the email of the creator that is sended from backend
       username = data.emailCreator
-    }
+    } 
    
     console.log(data.spCase)
     this.sensitiveData.forEach(element => {
@@ -139,36 +165,36 @@ export class HomeComponent implements OnInit {
       "Phone Number": data.spCase["addresses"][0]["phoneNumber"]
     })
 
-  }
-  private decrypt(element: any, key: string): String {
+  } */
+  /* private decrypt(element: any, key: string): String {
     var decrypted = CryptoJS.AES.decrypt(element, key).toString(CryptoJS.enc.Utf8);
     return decrypted;
-  }
-  hidePrivateKey(){
+  } */
+  /* hidePrivateKey(){
     this.hidePrivKey = !this.hidePrivKey
-  }
+  } */
 
   shareAccesToHospitals(){
-    if ((this.f.hashCase.value != "")&&(this.f.usernameToTranfer.value != "")) {
+    if ((this.fdecryptForm.caseId.value != "")&&(this.ftransferForm.usernameToTranfer.value != "")) {
       let username = JSON.parse(localStorage.getItem('user')).username
-      console.log('USERNAME ' + username)
+      console.log('Username: ' + username+ ' usernameToTransfer: '+this.ftransferForm.usernameToTranfer.value)
       let transferPermissionJSON = {
         username: username,
-        hashCase: this.f.hashCase.value,
-        usernameToTranfer: this.f.usernameToTranfer.value
+        caseId: this.fdecryptForm.caseId.value,
+        usernameToTransfer: this.ftransferForm.usernameToTranfer.value
       }
       this.initService.transferKey(transferPermissionJSON).subscribe(
         data => {
           console.log("RECEIVED")
             let res = JSON.stringify(data)
-            alert("Data Tranfer Succesfully")
+            alert("Case license transfer sucessfull!")
        },
        error => {
            alert(error.message);
        });
     }
     else {
-      alert("Error: Hash Case and Destination Hospital Required")
+      alert("Error: CaseId and Destination Hospital Required")
     }
   }
 }

@@ -23,6 +23,9 @@ export class InitService {
   getKey(body: any): Observable<any> {
     return this.http.post("http://localhost:3000/drm/key", body);
   }
+  decryptCase(body: any): Observable<any> {
+    return this.http.post("http://localhost:3000/decrypt", body);
+  }
   transferKey(body: any): Observable<any> {
     return this.http.post("http://localhost:3000/drm/transferKey", body);
   }
