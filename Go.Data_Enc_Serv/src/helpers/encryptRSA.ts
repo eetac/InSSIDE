@@ -1,5 +1,9 @@
 import crypto from "crypto";
 
+/**
+ * Encrypts the data, given publicKey in string(format:pem) &
+ * Data in string: (utf-8,base64,etc...)
+ */
 function encryptKeyRSA(publicKey: string, data: string):string{
     return crypto.publicEncrypt(
         {
@@ -11,6 +15,10 @@ function encryptKeyRSA(publicKey: string, data: string):string{
         Buffer.from(data)
     ).toString('base64');
 }
+/**
+ * Decrypts the data, given privateKey in string(format:pem) &
+ * encryptedData in string(base64)
+ */
 function  decryptKeyRSA(privateKey: string, encryptedData: string):string{
     return crypto.privateDecrypt(
         {

@@ -12,6 +12,16 @@ const config: ConfigurationData = new ConfigurationData();
 const IV_LENGTH = 16;
 export class EncryptCases {
 
+  /**
+   * Encrypts all of the case, under admin
+   * But remember to configure the config.ts properly
+   * with the GoData username,password and the outbreak
+   * which requires protection.
+   * Examples:
+   *
+   *    localhost:3000/encrypt
+   *
+   */
   //Function that get from the API all the actual cases and 
   //encrypt the ones that are not encrypted yet
   public async encryptCases(req: Request, res: Response) {
@@ -146,7 +156,13 @@ export class EncryptCases {
     }
   }
 
-
+  /**
+   * Decrypts the case, given username(token:Future) and caseId
+   * Examples:
+   *
+   *    {"caseId":"bla-bñabla","username":"admin"}
+   *
+   */
   //Function where the user pass the id of a case and return the case decrypted
   public async decryptCase(req: Request, res: Response) {
 
