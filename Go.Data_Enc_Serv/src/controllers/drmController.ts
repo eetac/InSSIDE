@@ -66,7 +66,7 @@ async function register(req: Request, res: Response) {
         let newUser:IUser = new User({
             username :req.body.username,
             contactInfo: req.body.contactInfo,
-            password: password,
+            password: "password-hidden",
             publicKey: publicKey,
             privateKey: privateKey
         });
