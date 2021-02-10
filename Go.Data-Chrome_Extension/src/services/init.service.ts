@@ -15,19 +15,19 @@ export class InitService {
     this.rooturl = new Rooturl();
   }
   register(body: any): Observable<any> {
-    return this.http.post("http://localhost:3000/drm/register", body);
+    return this.http.post("http://localhost:4000/drm/register", body);
   }
   login(body: any): Observable<any> {
-    return this.http.post("http://localhost:3000/drm/login", body);
+    return this.http.post("http://localhost:4000/drm/login", body);
   }
   getKey(body: any): Observable<any> {
-    return this.http.post("http://localhost:3000/drm/key", body);
+    return this.http.post("http://localhost:4000/drm/key", body);
   }
   decryptCase(body: any): Observable<any> {
-    return this.http.post("http://localhost:3000/decrypt", body);
+    return this.http.post("http://localhost:4000/decrypt", body);
   }
   transferKey(body: any): Observable<any> {
-    return this.http.post("http://localhost:3000/drm/transferKey", body);
+    return this.http.post("http://localhost:4000/drm/transferKey", body);
   }
   //Here we delate all the local storage of the user
   logout() {

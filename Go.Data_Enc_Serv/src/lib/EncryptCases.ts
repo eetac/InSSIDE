@@ -9,7 +9,9 @@ import User, { IUser } from "../models/user";
 import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicenses";
 import { default as encryptRSA } from '../helpers/encryptRSA';
 const config: ConfigurationData = new ConfigurationData();
+const Bcrypt = require('bcrypt');
 const IV_LENGTH = 16;
+const saltRounds = 10;
 export class EncryptCases {
 
   /**
@@ -34,15 +36,30 @@ export class EncryptCases {
       //console.log("STEP0 --> CASE: " + cases[i])
       //First we need to know who have added this case to Go.Data and generate the hash of the case
       let creator = cases[i].createdBy;
-      let creatorEmail = await this.getEmailCreator(cases[i].createdBy)
-      console.log("STEP1 --> EMAIL CREATOR: " + creatorEmail)
+      /*let creatorEmail = await this.getEmailCreator(cases[i].createdBy)*/
+      console.log("STEP1 --> EMAIL CREATOR: " + creator)
       let encryptionKey = crypto.randomFillSync(Buffer.alloc(32)).toString('hex');
       let iv = crypto.randomBytes(IV_LENGTH);
       console.log("STEP2 --> ENCRYPTION KEY: " + encryptionKey)
       // All cases must be anonymized & so the sensitive field
       // defined in the config.ts must be encrypted
 
-      //Now for each field sensitive it is encrypted
+      // First we hash the CIP, as this will provide the merge capability between same cases from different hospital
+      // without needing to decrypt the actual information of the patient/case
+      let positionCIP = 0;
+      while (cases[i]["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
+        positionCIP = positionCIP + 1;
+        if(positionCIP== cases[i]["documents"].length){
+          return res.status(400).json({ message: "Case not encrypted, need to provide valid CIP for all cases!" });
+        }
+      }
+      let fullFieldsToHash = cases[i]["documents"][positionCIP]["number"].toUpperCase();
+      let cipHash = Bcrypt.hashSync(fullFieldsToHash,saltRounds);
+      cases[i]["documents"][cases[i]["documents"].length] = {
+        "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER",
+        "number": cipHash
+      };
+      // Second we go over each sensitive field, search in the case for the field and encrypt
       config.sensitiveData.forEach(sensitiveField => {
 
         let sensitiveFieldLength = sensitiveField.split(",").length; //If there is a subSensitiveField like  address,phoneNumber
@@ -55,7 +72,7 @@ export class EncryptCases {
             fieldsModified = 1; //Field Modified
             let encryptedField: String = EncryptCases.encrypt(cases[i][sensitiveField], encryptionKey,iv);
             /*console.log(encryptedField);*/
-            cases[i][sensitiveField] = "/ENC/" + creatorEmail + "/" + encryptedField;
+            cases[i][sensitiveField] = "/ENC/" + creator + "/" + encryptedField;
           }
         }
         else { //had sensitiveField configured in config with internal subfields of the objects stored in a array
@@ -70,7 +87,7 @@ export class EncryptCases {
                 let fieldNeededEncryption = cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]];
                 let encryptedField: String = EncryptCases.encrypt(fieldNeededEncryption, encryptionKey,iv);
                 /*console.log(encryptedField)*/
-                cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = "/ENC/" + creatorEmail + "/" + encryptedField
+                cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = "/ENC/" + creator + "/" + encryptedField
               }
           }
         }
@@ -85,12 +102,12 @@ export class EncryptCases {
         await User.findOne({ username: "admin" }).then((managerUser)=>{
           if(managerUser!=null){
           let keyEncrypted:string = encryptRSA.encryptKeyRSA(managerUser.publicKey,encryptionKey);
-            User.findOne({ username: creatorEmail }).then((hospUser)=>{
+            /*User.findOne({ username: creator }).then((hospUser)=>{
               if(hospUser!=null){
-                /*let secret = encryptKeyRSA(publicKey,"secret-string");
+                /!*let secret = encryptKeyRSA(publicKey,"secret-string");
                 let secretBuffer = decryptKeyRSA(privateKey,secret);
-                let secretInString = Buffer.from(secretBuffer).toString('utf-8');*/
-                let keyEncryptedHospital:string = encryptRSA.encryptKeyRSA(hospUser.publicKey,encryptionKey); /*this.encryptKeyRSA(hospUser.publicKey,encryptionKey);*/
+                let secretInString = Buffer.from(secretBuffer).toString('utf-8');*!/
+                let keyEncryptedHospital:string = encryptRSA.encryptKeyRSA(hospUser.publicKey,encryptionKey); /!*this.encryptKeyRSA(hospUser.publicKey,encryptionKey);*!/
                 //Both admin & hospitalUser exists
                 keys = [
                   {
@@ -98,15 +115,16 @@ export class EncryptCases {
                     usedKey: keyEncrypted
                   },
                   {
-                    hospitalName: creatorEmail,
+                    hospitalName: creator,
                     usedKey: keyEncryptedHospital
                   }
                 ];
                 const newGoDataLicenseCase = new GoDataLicenses({
                   caseId: cases[i]['id'],
-                  creatorEmail: creatorEmail,
+                  cipHash:cipHash,
+                  creatorEmail: creator,
                   keys:keys }); //New entry in our DRM server to store the keys
-                /*console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)*/
+                /!*console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)*!/
                 newGoDataLicenseCase.save().then((data) => {
                   return res.status(201).send({ message: "Encrypted" });
 
@@ -114,7 +132,7 @@ export class EncryptCases {
                   console.log(err)
                   return res.status(500).json({ message: "Case not encrypted:  "+ err });
                 })
-              }else{
+              }else{*/
                 //Hospital, if the hospital does not exist in our DB we only save the keys of the admin
                 keys = [
                   {
@@ -123,7 +141,8 @@ export class EncryptCases {
                   }];
                 const newGoDataLicenseCase = new GoDataLicenses({
                   caseId: cases[i]['id'],
-                  creatorEmail: creatorEmail,
+                  cipHash:cipHash,
+                  creatorEmail: creator,
                   keys:keys }); //New entry in our DRM server to store the keys
                 /*console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)*/
                 newGoDataLicenseCase.save().then((data) => {
@@ -135,11 +154,11 @@ export class EncryptCases {
                   console.log(err)
                   return res.status(500).json({ message: "Case not encrypted:  "+ err });
                 })
-              }
-            }).catch((err)=>{
-              console.log("Error in database, while searching for hospital: "+creatorEmail);
+              /*}
+              }).catch((err)=>{
+              console.log("Error in database, while searching for hospital: "+creator);
               return res.status(500).json({ message: "Case not encrypted:  "+ err });
-            });
+            });*/
           }else{
             console.log("Failed trying to encrypt the case Key for admin user, admin not found in database!");
             return res.status(500).json({ message: "Case not encrypted, admin not found" });
@@ -160,7 +179,7 @@ export class EncryptCases {
    * Decrypts the case, given username(token:Future) and caseId
    * Examples:
    *
-   *    {"caseId":"bla-bñabla","username":"admin"}
+   *    {"caseId":"bla-bla-bla","username":"admin"}
    *
    */
   //Function where the user pass the id of a case and return the case decrypted
