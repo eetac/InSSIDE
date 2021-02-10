@@ -8,7 +8,7 @@ import { InitService } from 'src/services/init.service';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'Go.Data Chrome Extension';
+  title = 'GoData Anonymization';
   userActive:boolean;
   constructor(private initService: InitService) { 
     this.userStatus()

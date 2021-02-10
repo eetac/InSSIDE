@@ -1,9 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { InitService } from 'src/services/init.service';
-import { bigintToText, textToBigint } from 'bigint-conversion';
-import * as bigintCryptoUtils from 'bigint-crypto-utils'
-import * as CryptoJS from 'crypto-js'
 
 @Component({
   selector: 'app-home',
@@ -73,7 +70,7 @@ export class HomeComponent implements OnInit {
        });
     }
     else {
-      alert("Error: Hash Case Required")
+      alert("Error: CaseId Required")
     }
   }
 
