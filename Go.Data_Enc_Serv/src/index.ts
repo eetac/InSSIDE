@@ -1,32 +1,51 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import cors from 'cors';
-import router from './routes/index'
-import dbHandler from './database' 
-//Initiation
-const app = express();
-const port = 4000
+//Main Execution File of the Server
+import app from './app'; //Exported App importing here
+//Execute Connection to BDD before launching the Server
+import dbHandler from './database';
 
-//Config
-app.use(cors());
-app.options('*',cors());
-app.use( express.json() );
-app.use( '', router );
-app.use( bodyParser.json() );
+//Server definition
+const packageJson = require('../package.json')
+//Error Handling - Server
+const onError = (error: NodeJS.ErrnoException): void => {
+    if (error.syscall !== 'listen') throw error
+    let bind = (typeof port === 'string') ? 'Pipe ' + port : 'Port ' + port
+    /*let bind = 'Port ' + port*/
+    switch (error.code) {
+        case 'EACCES':
+            console.error(`${bind} requires elevated privileges`);
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(`${bind} is already in use`);
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+}
+//Event Listening - Server
+const onListening = (): void => {
+    // tslint:disable-next-line:max-line-length
+    console.log(`${packageJson.name} ${packageJson.version} listening on http://localhost:${port}!`)
+}
+//Initiating Server
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "http://localhost:4200");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With,Content-Type, Accept");
+    next();
+});
+let server = require('http').Server(app);
+const port = app.get('port');
 
+server.on('error', onError);
+server.on('listening', onListening);
 
-
-//Middlewares
-app.use(express.json()); //Parse JSON
-app.use(express.urlencoded({extended: false}));
-
-
-
-//Server init
+//Database Connection Initialization
 dbHandler.initiateDB().then((res)=>{
     //No DB Initiation error
     dbHandler.createAdmin().then(()=>{
-        app.listen(port, () => console.log("Server listening at http://localhost:" + port));
+        // Everything ok, server initialization
+        server.listen(port);
     }).catch((err)=>{
         //Some unexpected error occurred!
         console.log("Error creating default admin, server won't be ran : "+err);

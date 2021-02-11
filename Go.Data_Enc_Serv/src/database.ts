@@ -1,26 +1,29 @@
-import mongoose from 'mongoose';
+import mongoose, { ConnectionOptions } from 'mongoose';
 import User, { IUser } from "./models/user";
+import config from "./configurations/config";
 const bcrypt = require('bcrypt');
 const crypto = require("crypto");
-mongoose.set('useNewUrlParser', true);
-mongoose.set('useUnifiedTopology', true);
-mongoose.set('useCreateIndex', true);
+
 /**===========================================================
  * ?  initiateDB function connects to the database and resolves
  * *   if the connection was successful or rejects when it wasn't
  *============================================================**/
-function initiateDB() {	
+function initiateDB() {
     return new Promise((resolve,reject )=>{
         try {
-        mongoose.connect('mongodb://localhost/DRM').then(r =>{
-            console.log('Connection w/ DB Succesful!');
-            resolve(true);
-            return;
-        }).catch((err)=>{
-            //Already being handled in index.ts console.log('Connection Error w/DB');
-            reject(new Error(err.message));
-            return;
-        });
+            const dbOptions: ConnectionOptions = {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+            }
+            mongoose.connect(config.DB.URI, dbOptions).then(r =>{
+                console.log('Connection w/ DB Successful!');
+                resolve(true);
+                return;
+            }).catch((err)=>{
+                //Already being handled in index.ts console.log('Connection Error w/DB');
+                reject(new Error(err.message));
+                return;
+            });
         } catch  (error) {
             ////console.debug("Some error while setting LastActive on User", error);
             reject( new Error( error ) );

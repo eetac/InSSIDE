@@ -1,14 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-
+import goDataHelper from "../helpers/goDataHelper";
 import User, {IUser} from '../models/user';//We send a message to the client
-import { EncryptCases } from '../lib/EncryptCases';
-import { default as encryptRSA } from '../helpers/encryptRSA';
-import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicense";
+import { default as encryptRSA } from '../helpers/cipherRSA';
+import GoDataLicenses from "../models/godataLicense";
 const Bcrypt = require('bcrypt');
 const crypto = require("crypto");
 
-
-async function login(req: Request, res: Response, next: NextFunction) {
+async function login(req: Request, res: Response) {
 
     console.log('Log in -> username: ' + req.body.username + ' ' + req.body.password)
     if (!req.body.username || !req.body.password) {
@@ -105,8 +103,8 @@ async function getKeyOfCase(req: Request, res: Response) {
                 if (goDataLicense.keys[i].hospitalName.toString() == username) {
                     //We will return the key encrypted with the public key, so only the
                     // hospital or user with private key can decrypt and get the symmetric key!
-                    const encrypt: EncryptCases = new EncryptCases;
-                    encrypt.getCase(caseId).then((caseResponse) => {
+
+                    goDataHelper.getCase(caseId).then((caseResponse) => {
                         if (caseResponse.error == null) {
                             //No error in the response, means correct result
                             return res.status(200).send({
