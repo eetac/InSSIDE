@@ -6,7 +6,7 @@ import {ConfigurationData} from './config'
 
 import crypto from 'crypto'
 import User, { IUser } from "../models/user";
-import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicenses";
+import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicense";
 import { default as encryptRSA } from '../helpers/encryptRSA';
 const config: ConfigurationData = new ConfigurationData();
 const Bcrypt = require('bcrypt');

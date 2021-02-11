@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import User, {IUser} from '../models/user';//We send a message to the client
 import { EncryptCases } from '../lib/EncryptCases';
 import { default as encryptRSA } from '../helpers/encryptRSA';
-import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicenses";
+import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicense";
 const Bcrypt = require('bcrypt');
 const crypto = require("crypto");
 
