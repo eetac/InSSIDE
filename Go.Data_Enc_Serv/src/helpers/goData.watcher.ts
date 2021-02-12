@@ -17,10 +17,16 @@ function initiateDBWatch() {
             */
             const pipeline = [
                 {
-                    $match: {operationType: 'insert'}
+                    "$match": {
+                        "operationType":{
+                          "$in":[
+                              "insert"
+                          ]
+                        }
+                    }
                 }
             ];
-            let con = await MongoClient.connect(config.DBGoData.URI, {"useNewUrlParser": true})
+            let con = await MongoClient.connect(config.DBGoData.URI, {"useNewUrlParser": true,useUnifiedTopology: true})
             watch_insert(con, 'go-data', 'person',pipeline)
             return resolve({message:"ChangeStream Executed on GoData DB"});
             /*const dbOptions: ConnectionOptions = {
@@ -55,6 +61,35 @@ function watch_insert(con:any, db:string, collection:string,pipeline:any) {
     con.db(db).collection(collection).watch(pipeline)
         .on('change', (data:any) => {
             console.log(data)
-        })
+        });
 }
-export default { initiateDBWatch };
+
+function listenDB(/*conditions: { _id: { $gt: any; }; }*//*, callback: any*/) {
+    return new Promise(async (resolve,reject )=>{
+        try {
+            let conditions= { _id: {}};
+        MongoClient.connect(config.DBGoData.URI, {"useNewUrlParser": true,useUnifiedTopology: true}).then((con:any)=>{
+            let coll = con.db.collection('person')
+            let latestCursor = coll.find({}).sort({$natural: -1}).limit(1)
+            latestCursor.nextObject(function(err:any, latest:any) {
+                if (latest) {
+                    conditions._id = {$gt: latest._id}
+                }
+                let options = {
+                    tailable: true,
+                    await_data: true,
+                    numberOfRetries: -1
+                }
+                let stream = coll.find({}, options).sort({$natural: -1}).stream()
+                stream.on('data', (data:any)=>{
+                    console.log(data);
+                })
+            })
+        });
+        }catch (e) {
+            console.log(e);
+            return reject(e)
+        }
+    });
+}
+export default { listenDB };

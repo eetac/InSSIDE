@@ -41,7 +41,7 @@ server.on('error', onError);
 server.on('listening', onListening);
 
 // Database Watcher
-dbWatcher.initiateDBWatch().then(r => {
+dbWatcher.listenDB().then(r => {
     console.log(r);
 }).catch(err=>{
     console.log(err);
