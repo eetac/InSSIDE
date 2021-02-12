@@ -68,10 +68,10 @@ function listenDB(/*conditions: { _id: { $gt: any; }; }*//*, callback: any*/) {
     return new Promise(async (resolve,reject )=>{
         try {
             let conditions= { _id: {}};
-        MongoClient.connect(config.DBGoData.URI, {"useNewUrlParser": true,useUnifiedTopology: true}).then((con:any)=>{
-            let coll = con.db.collection('person')
+            MongoClient.connect(config.DBGoData.URI, {"useNewUrlParser": true,useUnifiedTopology: true}).then((con:any)=>{
+            let coll = con.db("go-data").collection('person')
             let latestCursor = coll.find({}).sort({$natural: -1}).limit(1)
-            latestCursor.nextObject(function(err:any, latest:any) {
+            latestCursor.next(function(err:any, latest:any) {
                 if (latest) {
                     conditions._id = {$gt: latest._id}
                 }
@@ -80,12 +80,20 @@ function listenDB(/*conditions: { _id: { $gt: any; }; }*//*, callback: any*/) {
                     await_data: true,
                     numberOfRetries: -1
                 }
-                let stream = coll.find({}, options).sort({$natural: -1}).stream()
-                stream.on('data', (data:any)=>{
-                    console.log(data);
-                })
+                try {
+                    let stream = coll.find({}, options).sort({$natural: -1}).stream()
+                    stream.on('data', (data: any) => {
+                        console.log(data);
+                    })
+                    return resolve({message:"Tailable Watch Cursor started..."})
+                }catch(e){
+                    return reject(e);
+                }
             })
-        });
+
+        }).catch((err:any)=>{
+            console.log(err);
+            });
         }catch (e) {
             console.log(e);
             return reject(e)

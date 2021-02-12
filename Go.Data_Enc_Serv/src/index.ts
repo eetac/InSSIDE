@@ -44,7 +44,7 @@ server.on('listening', onListening);
 dbWatcher.listenDB().then(r => {
     console.log(r);
 }).catch(err=>{
-    console.log(err);
+    console.log("GoData DB --> collection --> person is not capped, so not tailable neither watchable!");
 });
 //Database Connection Initialization
 /*dbHandler.initiateDB().then((res)=>{*/
