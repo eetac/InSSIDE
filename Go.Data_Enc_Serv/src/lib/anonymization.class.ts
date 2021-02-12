@@ -22,17 +22,17 @@ interface IResult{
  *
  */
 function encryptCases(cases:any): Promise<IResult>{
-    return new Promise((resolve,reject )=> {
+    return new Promise(async (resolve,reject )=> {
 
         //for all the cases we encrypt if is needed the sensible data
         let fieldsModified: Number = 0;
         for (let i = 0; i < cases.length; i++) {
             //console.log("STEP0 --> CASE: " + cases[i])
             //First we need to know who have added this case to Go.Data and generate the hash of the case
-            let creator = cases[i].createdBy;
-            /*let creatorEmail = await this.getEmailCreator(cases[i].createdBy)*/
-            console.log("STEP1 --> EMAIL CREATOR: " + creator)
-            let encryptionKey = crypto.randomFillSync(Buffer.alloc(32)).toString('hex');
+            //let creator = cases[i].createdBy;
+            let creator = await goDataHelper.getInstituteCreator(cases[i].createdBy);
+            console.log("STEP1 --> Institution CREATOR: " + creator)
+            let encryptionKey = crypto.randomFillSync(Buffer.alloc(32)).toString('base64');
             let iv = crypto.randomBytes(config.IV_LENGTH);
             console.log("STEP2 --> ENCRYPTION KEY: " + encryptionKey)
             // All cases must be anonymized & so the sensitive field

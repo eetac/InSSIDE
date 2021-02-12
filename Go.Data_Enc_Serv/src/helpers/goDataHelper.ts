@@ -52,7 +52,7 @@ function updateCase(body: any){
     });
 }
 
-function getEmailCreator(idCreator: string):Promise<string>{
+function getInstituteCreator(idCreator: string):Promise<string>{
     return new Promise((resolve,reject )=> {
         //Here we search the email of the creator of the case to then save in our DB
         let id: string = idCreator;//req.params.hashCase;
@@ -60,7 +60,9 @@ function getEmailCreator(idCreator: string):Promise<string>{
             const url: string = `${config.URL}/users/${id}?access_token=${token}`;
             doGet(url).then((res)=>{
                 let user = JSON.parse(res);
-                return resolve(user.email);
+                let institute = user.institutionName.split("_");
+                let nameInstitute = institute.splice(6,institute.length-1).join('');
+                return resolve(nameInstitute);
             }).catch((err)=>{
                 return reject(err);
             })
@@ -203,19 +205,19 @@ function auth():Promise<string>{
 
         doPost(url, body).then((result)=>{
             const json = JSON.parse(result);
-            resolve(json.id);
-            return;
+
+            return resolve(json.id);
         }).catch((err)=>{
             console.log("Error doing a post inside authentication: "+err);
-            reject(err);
-            return;
+
+            return reject(err);
         });
     });
 }
 
 export default {
     getCases,
-    getEmailCreator,
+    getInstituteCreator,
     updateCase,
     getCase
 }
