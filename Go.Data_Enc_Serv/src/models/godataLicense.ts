@@ -1,4 +1,6 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, {ConnectionOptions, Document, Schema} from 'mongoose';
+import config from "../configurations/config";
+/*const {drmDB,goDataDB} = require('./connections');*/
 //USERS OF THE DRM SERVER
 const GoDataLicensesSchema: Schema = new Schema({
 
@@ -22,7 +24,14 @@ export interface IGoDataLicensesSchema extends Document {
     creatorEmail: string;
     keys: Array<key>;
 }
+const dbOptions: ConnectionOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+};
+const conn = mongoose.createConnection(config.DB.URI,dbOptions);
+conn.model('GoDataLicense', GoDataLicensesSchema,'GoDataLicenses');
+module.exports = conn.collections.GoDataLicenses;
 //Mongoose.model(name, [schema], [collectionName], [skipInit])
-export default mongoose.model<IGoDataLicensesSchema>('GoDataLicense', GoDataLicensesSchema,'GoDataLicenses');
+/*export default mongoose.model<IGoDataLicensesSchema>('GoDataLicense', GoDataLicensesSchema,'GoDataLicenses');*/
 /*
 export default model('GoDataLicenses', GoDataLicensesSchema);*/

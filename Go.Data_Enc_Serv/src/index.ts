@@ -2,7 +2,7 @@
 import app from './app'; //Exported App importing here
 //Execute Connection to BDD before launching the Server
 import dbHandler from './database';
-
+import dbWatcher from './helpers/goData.watcher';
 //Server definition
 const packageJson = require('../package.json')
 //Error Handling - Server
@@ -40,16 +40,26 @@ const port = app.get('port');
 server.on('error', onError);
 server.on('listening', onListening);
 
+// Database Watcher
+dbWatcher.initiateDBWatch().then(r => {
+    console.log(r);
+}).catch(err=>{
+    console.log(err);
+});
 //Database Connection Initialization
-dbHandler.initiateDB().then((res)=>{
+/*dbHandler.initiateDB().then((res)=>{*/
     //No DB Initiation error
     dbHandler.createAdmin().then(()=>{
-        // Everything ok, server initialization
-        server.listen(port);
+        // changeStream MongoDb GoData
+        /*dbHandler.initiateDBGoData().then((client)=>{*/
+            /*const client = mongo2.connection.client;*/
+
+            // Everything ok, server initialization
+            server.listen(port);
     }).catch((err)=>{
         //Some unexpected error occurred!
         console.log("Error creating default admin, server won't be ran : "+err);
     });
-}).catch((error)=>{
+/*}).catch((error)=>{
     console.log('Connection Error w/DB \n: '+error);
-});
+});*/

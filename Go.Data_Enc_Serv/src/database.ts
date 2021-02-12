@@ -1,13 +1,13 @@
 import mongoose, { ConnectionOptions } from 'mongoose';
-import User, { IUser } from "./models/user";
+
 import config from "./configurations/config";
 const bcrypt = require('bcrypt');
 const crypto = require("crypto");
-
+let User  = require('./models/user');
 /**===========================================================
  * ?  initiateDB function connects to the database and resolves
  * *   if the connection was successful or rejects when it wasn't
- *============================================================**/
+ *============================================================*
 function initiateDB() {
     return new Promise((resolve,reject )=>{
         try {
@@ -17,7 +17,34 @@ function initiateDB() {
             }
             mongoose.connect(config.DB.URI, dbOptions).then(r =>{
                 console.log('Connection w/ DB Successful!');
-                resolve(true);
+                resolve(r);
+                return;
+            }).catch((err)=>{
+                //Already being handled in index.ts console.log('Connection Error w/DB');
+                reject(new Error(err.message));
+                return;
+            });
+        } catch  (error) {
+            ////console.debug("Some error while setting LastActive on User", error);
+            reject( new Error( error ) );
+            return;
+        }
+    });
+}*/
+/**===========================================================
+ * ?  initiateDBGoData function connects to the database and resolves
+ * *   if the connection was successful or rejects when it wasn't
+ *============================================================**/
+function initiateDBGoData():Promise<any>{
+    return new Promise((resolve,reject )=>{
+        try {
+            const dbOptions: ConnectionOptions = {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+            }
+            mongoose.connect(config.DBGoData.URI, dbOptions).then(r =>{
+                console.log('Connection w/ DB Successful!');
+                resolve(r);
                 return;
             }).catch((err)=>{
                 //Already being handled in index.ts console.log('Connection Error w/DB');
@@ -40,7 +67,7 @@ function createAdmin():Promise<boolean>{
     return new Promise((resolve,reject )=>{
         try {
             let query = { "username": "admin" };
-            User.findOne(query).then((res)=>{
+            User.findOne(query).then((res: any)=>{
                 if(res==null){
                     // Admin not created in the DB
                     // Creating a new admin
@@ -60,17 +87,17 @@ function createAdmin():Promise<boolean>{
                                 //passphrase: 'top secret' // *optional*
                             }
                         });
-                    let managerUser:IUser = new User({
+                    let managerUser = new User({
                         username :"admin",
                         contactInfo: "admin@admin.com",
                         password: password,
                         publicKey: publicKey,
                         privateKey: privateKey
                     });
-                    managerUser.save().then((_) => {
+                    managerUser.save().then((_: any) => {
                         console.log("admin created with username:admin & password:admin; Remember to change!");
                         resolve( true );return;
-                    }).catch((err) => {
+                    }).catch((err: any) => {
                         reject( new Error( err ) );
                         return;
                     });
@@ -80,7 +107,7 @@ function createAdmin():Promise<boolean>{
                     resolve( true );
                     return;
                 }
-            }).catch((err)=>{
+            }).catch((err: any)=>{
                 reject( new Error( err ) );
                 return;
             });
@@ -92,4 +119,4 @@ function createAdmin():Promise<boolean>{
     });
 }
 
-export default { initiateDB,createAdmin };
+export default { /*initiateDB,*/initiateDBGoData,createAdmin };

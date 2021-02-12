@@ -1,12 +1,13 @@
 import crypto from 'crypto'
-import User from "../models/user";
+/*import User from "../models/user";*/
 import config from "../configurations/config";
-import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicense";
+/*import GoDataLicenses from "../models/godataLicense";*/
 import asymmetricCipher from '../helpers/cipherRSA';
 import goDataHelper from "../helpers/goDataHelper";
 import symmetricCipher from "../helpers/cipherAES";
 const Bcrypt = require('bcrypt');
-
+let User  = require('../models/user');
+let GoDataLicenses  = require('../models/godataLicense');
 interface IResult{
     message:string,
     statusCode:number
@@ -79,7 +80,7 @@ function encryptCases(cases:any): Promise<IResult>{
                 // Only update if key encryption didn't fail --> await this.updateCase(cases[i]);
                 let keys;
                 //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
-                User.findOne({ username: "admin" }).then((managerUser)=>{
+                User.findOne({ username: "admin" }).then((managerUser:any)=>{
                     if(managerUser!=null){
                         // Now hash the CIP, as this will provide the merge capability between same cases from different hospital
                         // without needing to decrypt the actual information of the patient/case
@@ -103,18 +104,18 @@ function encryptCases(cases:any): Promise<IResult>{
                                 hospitalName: "admin",
                                 usedKey: keyEncrypted
                             }];
-                        const newGoDataLicenseCase:IGoDataLicensesSchema = new GoDataLicenses({
+                        const newGoDataLicenseCase= new GoDataLicenses({
                             caseId: cases[i]['id'],
                             cipHash:cipHash,
                             creatorEmail: creator,
                             keys:keys }); //New entry in our DRM server to store the keys
                         /*console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)*/
-                        newGoDataLicenseCase.save().then((data) => {
+                        newGoDataLicenseCase.save().then((data:any) => {
                             //Update the data in GoData when actually everything correct!!!!
                             goDataHelper.updateCase(cases[i]).then((_)=>{
                                 return resolve({ message: "Encrypted" , statusCode: 200});
                             })
-                        }).catch((err) => {
+                        }).catch((err:any) => {
                             console.log(err)
                             return reject({ message: "Case not encrypted:  "+ err  , statusCode: 500});
                         })
@@ -123,7 +124,7 @@ function encryptCases(cases:any): Promise<IResult>{
                         return reject({ message: "Case not encrypted, admin not found"  , statusCode: 500});
                     }
 
-                }).catch((err)=>{
+                }).catch((err:any)=>{
                     console.log("Failed trying to encrypt the case Key for admin user: "+err.message);
                     return reject({ message: "Failed trying to encrypt the case Key for admin user:  "+ err , statusCode: 500 });
                 });
@@ -149,9 +150,9 @@ function decryptCases(username:string,caseId:string): Promise<IResult>{
         //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
         //Just for test we put the key already decrypted
         //keyDecrypted = af44f60c2c308c7904abaa211970c63201114eaf6a0ede5724b3fd9506967da9
-        User.findOne({ username: username}).then((hospitalUser)=>{
+        User.findOne({ username: username}).then((hospitalUser:any)=>{
             if(hospitalUser!=null){
-                GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
+                GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense:any)=>{
                     if(goDataLicense!=null){
                         // GoDataLicense found...
                         let i = 0;
@@ -236,14 +237,14 @@ function decryptCases(username:string,caseId:string): Promise<IResult>{
                     }else{
                         return reject({ message: "Case not found, erroneous id!", statusCode: 404});
                     }
-                }).catch((err)=>{
+                }).catch((err:any)=>{
                     console.log("Error while getting GoDataLicense "+err);
                     return reject({ message:  "Server error, please try again", statusCode: 500});
                 });
             }else{
                 return reject({ message: "User doesn't exist", statusCode: 404});
             }
-        }).catch((err)=>{
+        }).catch((err:any)=>{
             return reject({ message: "Server error, please check the fields are as required", statusCode: 500});
         });
     });

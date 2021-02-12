@@ -29,6 +29,7 @@ const decryptCase: any = async (req: Request, res: Response)=> {
     anonymizationHelper.decryptCases(req.body.username,req.body.caseId).then((result)=>{
         return res.status(result.statusCode).json({ message: result.message });
     }).catch((erroneousResult)=>{
+        console.log(erroneousResult);
         return res.status(erroneousResult.statusCode).json({ message: erroneousResult.message });
     });
 }
