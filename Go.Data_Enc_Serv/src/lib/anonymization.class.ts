@@ -43,18 +43,17 @@ function encryptCases(cases:any): Promise<IResult>{
             config.sensitiveData.forEach(sensitiveField => {
 
                 let sensitiveFieldLength = sensitiveField.split(",").length; //If there is a subSensitiveField like  address,phoneNumber
-
+                console.log("sensitiveField: "+sensitiveField);
                 if (sensitiveFieldLength == 1) { //We don't need to split because sensitiveField doesn't have subSensitiveField
 
                     // If the beginning of the value is different of /ENC
-                    // (so it has not been encrypted yet) we encrypt the field and add /ENC/creatorEmail at the beggining
+                    // (so it has not been encrypted yet) we encrypt the field and add /ENC/creatorEmail at the beginning
+                    console.log("cases[i][sensitiveField]: "+cases[i][sensitiveField]);
                     if (cases[i][sensitiveField].substring(0, 5) != "/ENC/") {
                         fieldsModified = 1; //Field Modified
                         let encryptedField: String = symmetricCipher.encryptSymmetric(cases[i][sensitiveField], encryptionKey,iv);
                         /*console.log(encryptedField);*/
                         cases[i][sensitiveField] = "/ENC/" + creator + "/" + encryptedField;
-                    }else{
-                        return;
                     }
                 }
                 else { //had sensitiveField configured in config with internal subfields of the objects stored in a array
@@ -64,6 +63,7 @@ function encryptCases(cases:any): Promise<IResult>{
                     // Also applies for addresses, which might contain phone and addresses
                     let fieldObjectsLength = cases[i][subSensitiveField[0]].length;
                     for(let subSensitiveFields=0;subSensitiveFields<fieldObjectsLength;subSensitiveFields++){
+                        console.log("sensitiveFieldVal: "+cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]]);
                         if (cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
                             fieldsModified = 1; //SetModified
                             let fieldNeededEncryption = cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]];
@@ -74,7 +74,7 @@ function encryptCases(cases:any): Promise<IResult>{
                     }
                 }
             });
-
+            console.log("fields Modified: "+fieldsModified);
             if (fieldsModified != 0) {
                 // We update only the cases where we have encrypted data, and if the key save was success
                 // we don't want to update case, if the key is not saved. As impossible to recover...
@@ -113,8 +113,9 @@ function encryptCases(cases:any): Promise<IResult>{
                         /*console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)*/
                         newGoDataLicenseCase.save().then((data) => {
                             //Update the data in GoData when actually everything correct!!!!
-                            goDataHelper.updateCase(cases[i]).then((_)=>{
-                                return resolve({ message: "Encrypted" , statusCode: 200});
+                            goDataHelper.updateCase(cases[i]).catch((err)=>{
+                                console.log(err);
+                                return reject({ message: "Case not encrypted:  "+ err  , statusCode: 500});
                             })
                         }).catch((err) => {
                             console.log(err)
@@ -134,6 +135,7 @@ function encryptCases(cases:any): Promise<IResult>{
                 fieldsModified = 0 //Reset
             }
         }
+        return resolve({ message: "Encrypted" , statusCode: 200});
     });
 }
 

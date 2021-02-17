@@ -7,8 +7,9 @@ const config = require('./configurations/config');
 const path = require('path');
 const packageJson = require('../package.json')
 /*const autoEncrypt = require('./workers/worker')*/
-import autoEncrypt from "./workers/worker";
+/*import autoEncrypt from "./workers/worker";*/
 /*const { Worker } = require('worker_threads')*/
+const { fork } = require('child_process');
 //Error Handling - Server
 const onError = (error: NodeJS.ErrnoException): void => {
     if (error.syscall !== 'listen') throw error
@@ -39,8 +40,7 @@ app.use(function(req, res, next) {
     next();
 });
 // Child Process to be executed for autoEncrypt
-/*
-function runService(/!*workerData:any*!/) {
+/*function runService(/!*workerData:any*!/) {
     return new Promise((resolve, reject) => {
         const worker = new Worker(path.resolve(__dirname,'workers/migration.js'), {
             workerData: {
@@ -54,12 +54,17 @@ function runService(/!*workerData:any*!/) {
                 reject(new Error(`Worker stopped with exit code ${code}`));
         })
     })
-}
+}*/
 async function runOffThread() {
-    const result = await runService()
-    console.log(result);
+    /*const result = await runService()
+    console.log(result);*/
+    /*const n = fork(path.resolve(__dirname,'workers/migration.js'));*/
+    const child = fork('./src/workers/worker.ts');
+    console.log(process.execArgv);
+    child.on('message', (message: string) => {
+        console.log('Result: ', message)
+    });
 }
-*/
 
 // Server Initialization and Port mapping
 let server = require('http').Server(app);
@@ -75,8 +80,8 @@ dbHandler.initiateDB().then((res)=>{
         // Everything ok, server initialization
         server.listen(port);
         // Create 2nd Thread where the autoEncrypt works every X min
-        autoEncrypt.timerEncrypt();
-        /*runOffThread().catch(err => console.error(err));*/
+        /*autoEncrypt.timerEncrypt();*/
+        runOffThread().catch(err => console.error(err));
         console.log(`Auto Encryption every: ${config.autoEncryptSeconds} seconds`);
     }).catch((err)=>{
         //Some unexpected error occurred!
