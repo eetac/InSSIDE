@@ -1,7 +1,6 @@
 //Example of the different fields in the configuration file
-export default {
-
-    URL :"http://localhost:8000/api",
+const configExample = {
+    URL : "http://localhost:8000/api",
     IV_LENGTH : 16,
     saltRounds : 10,
     USER :"krunal@krunal.com",
@@ -13,5 +12,7 @@ export default {
         URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/DRM',
         USER: process.env.MONGODB_USER,
         PASSWORD: process.env.MONGODB_PASSWORD
-    }
-}
+    },
+    autoEncryptSeconds: 60
+};
+module.exports = config;

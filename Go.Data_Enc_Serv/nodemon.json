@@ -3,7 +3,7 @@
         "src"
     ],
     "ext": "ts",
-    "ingnore":[
+    "ignore":[
         "src/**/*.spec.ts"
     ],
     "exec": "ts-node ./src/index.ts"

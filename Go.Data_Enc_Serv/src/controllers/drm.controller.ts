@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response} from 'express';
 import goDataHelper from "../helpers/goDataHelper";
 import User, {IUser} from '../models/user';//We send a message to the client
 import { default as encryptRSA } from '../helpers/cipherRSA';
