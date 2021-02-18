@@ -18,7 +18,7 @@ interface IConfig {
 const config:IConfig = {
     URL : "http://localhost:8000/api", //Go Data URI
     IV_LENGTH : 16, // Minimum Length 16 IV
-    saltRounds : 10, // Hash Function Round, recommended for security at least 10
+    saltRounds : 10, // Hash Function Rounds, recommended for security at least 10
     USER :"krunal@krunal.com",
     PASSWORD : "kruskechi123",
     USER_AGENT : "GoData LocalHost Connector 2.5.6",
@@ -29,6 +29,7 @@ const config:IConfig = {
         USER: process.env.MONGODB_USER,
         PASSWORD: process.env.MONGODB_PASSWORD
     },
-    autoEncryptSeconds: 60
+    autoEncryptSeconds: 60 // Don't put too short, as there is a time required to encrypt and save to DB
+    // Either way, if the time is too short it will only auto encrypt when the previous is complete!
 };
 module.exports = config;

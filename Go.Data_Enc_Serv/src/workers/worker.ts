@@ -23,35 +23,22 @@ function timerEncrypt() {
             console.log("Gonna run encryption...");
             anonymizationHelper.encryptCases(cases).then((res) => {
                 console.log(`Auto Encryption ran successfully, next auto encryption in: ${configWorker.autoEncryptSeconds}`);
-                process.send(`Auto Encryption ran successfully, next auto encryption in: ${configWorker.autoEncryptSeconds}`);
+                /*process.send(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);*/
                 setTimeout(timerEncrypt, configWorker.autoEncryptSeconds * 1000);
-                console.log(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);
-                process.send(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);
             }).catch((erroneousResult: any) => {
                 console.log(`Error while auto encrypting cases :: ${erroneousResult}`);
-                setTimeout(timerEncrypt, configWorker.autoEncryptSeconds * 1000);
                 console.log(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);
-                process.send(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);
+                setTimeout(timerEncrypt, configWorker.autoEncryptSeconds * 1000);
             });
         }).catch((err: any) => {
             console.log(err);
         });
     }).catch((err) => {
         console.log("Error doing a post inside authentication: " + err);
-        process.send("Error doing a post inside authentication: " + err);
+        /*process.send("Error doing a post inside authentication: " + err);*/
     });
 }
-
+console.log("Running child process...");
+console.log(`Auto Encryption every: ${configWorker.autoEncryptSeconds} seconds`);
+/*process.send("Testing if runs even after 60seconds");*/
 timerEncrypt()
-
-console.log('Hello world!');
-process.send("Running child process...");
-
-// Work in progress
-/*goDataHelper.getCases().then((cases:any)=>{
-
-}).catch((err:any)=>{
-    console.log(`Error while getting cases for auto encryption :: ${err}`);
-    setTimeout(timerEncrypt, config2.autoEncryptSeconds*1000);
-    console.log(`Next auto encryption in: ${config2.autoEncryptSeconds}`);
-})*/

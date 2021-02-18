@@ -9,7 +9,8 @@ const packageJson = require('../package.json')
 /*const autoEncrypt = require('./workers/worker')*/
 /*import autoEncrypt from "./workers/worker";*/
 /*const { Worker } = require('worker_threads')*/
-const { fork } = require('child_process');
+/*const { fork } = require('child_process');*/
+const child_process = require('child_process');
 //Error Handling - Server
 const onError = (error: NodeJS.ErrnoException): void => {
     if (error.syscall !== 'listen') throw error
@@ -59,13 +60,30 @@ async function runOffThread() {
     /*const result = await runService()
     console.log(result);*/
     /*const n = fork(path.resolve(__dirname,'workers/migration.js'));*/
-    const child = fork('./src/workers/worker.ts');
-    console.log(process.execArgv);
-    child.on('message', (message: string) => {
-        console.log('Result: ', message)
+    let workerProcess = child_process.spawn('node', [path.resolve(__dirname,'workers/migration.js')]);
+    workerProcess.stdout.on('data', function (data) {
+        console.log('childProcess: ' + data);
     });
+    workerProcess.stderr.on('data', function (data) {
+        console.log('childProcess Error: ' + data);
+    });
+    workerProcess.on('close', function (code) {
+        console.log('child process exited with code ' + code);
+    });
+    /*const child = fork('./src/workers/worker.ts');
+    console.log(process.execArgv);
+    /!*child.on('message', (message: string) => {
+        console.log('Result: ', message)
+    });*!/
+    child.kill('SIGINT');*/
 }
+process.on('beforeExit', (code) => {
+    console.log('Process beforeExit event with code: ', code);
+});
 
+process.on('exit', (code) => {
+    console.log('Process exit event with code: ', code);
+});
 // Server Initialization and Port mapping
 let server = require('http').Server(app);
 const port = app.get('port');
@@ -82,7 +100,6 @@ dbHandler.initiateDB().then((res)=>{
         // Create 2nd Thread where the autoEncrypt works every X min
         /*autoEncrypt.timerEncrypt();*/
         runOffThread().catch(err => console.error(err));
-        console.log(`Auto Encryption every: ${config.autoEncryptSeconds} seconds`);
     }).catch((err)=>{
         //Some unexpected error occurred!
         console.log("Error creating default admin, server won't be ran : "+err);

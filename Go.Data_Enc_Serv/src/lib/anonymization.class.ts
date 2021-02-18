@@ -38,7 +38,6 @@ function encryptCases(cases:any): Promise<IResult>{
             // All cases must be anonymized & so the sensitive field
             // defined in the config.ts must be encrypted
 
-
             // First we go over each sensitive field, search in the case for the field and encrypt
             config.sensitiveData.forEach(sensitiveField => {
 
@@ -61,15 +60,20 @@ function encryptCases(cases:any): Promise<IResult>{
                     // Documents which contains a list of documents such as nationality, archived_id etc, so
                     // need to go over each document and encrypt the number of that document which we want to protect
                     // Also applies for addresses, which might contain phone and addresses
-                    let fieldObjectsLength = cases[i][subSensitiveField[0]].length;
-                    for(let subSensitiveFields=0;subSensitiveFields<fieldObjectsLength;subSensitiveFields++){
-                        console.log("sensitiveFieldVal: "+cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]]);
-                        if (cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
-                            fieldsModified = 1; //SetModified
-                            let fieldNeededEncryption = cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]];
-                            let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey,iv);
-                            /*console.log(encryptedField)*/
-                            cases[i][subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = "/ENC/" + creator + "/" + encryptedField
+                    /*let fieldObjectsLength = ;*/
+                    for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
+                        //Cannot Encrypt Other Document as this contains the CIF HASH!
+                        if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER")) {
+                            console.log("sensitiveFieldVal: " + cases[i][subSensitiveField[0]][k][subSensitiveField[1]]);
+
+                            console.log("Val: " + cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5));
+                            if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
+                                fieldsModified = 1; //SetModified
+                                let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
+                                let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey, iv);
+                                /*console.log(encryptedField)*/
+                                cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + creator + "/" + encryptedField
+                            }
                         }
                     }
                 }
@@ -130,10 +134,10 @@ function encryptCases(cases:any): Promise<IResult>{
                     console.log("Failed trying to encrypt the case Key for admin user: "+err.message);
                     return reject({ message: "Failed trying to encrypt the case Key for admin user:  "+ err , statusCode: 500 });
                 });
-
                 //Resetting for next case!
                 fieldsModified = 0 //Reset
             }
+
         }
         return resolve({ message: "Encrypted" , statusCode: 200});
     });
@@ -148,11 +152,10 @@ function encryptCases(cases:any): Promise<IResult>{
  */
 function decryptCases(username:string,caseId:string): Promise<IResult>{
     return new Promise((resolve,reject )=> {
-        //Once we have the case we need to check to get the key to decrypt that is encrypted with pubkey of Hosp
+        //Once we have the case we need to check to get the key to decrypt that is encrypted with publicKey of Hospital
         let decryptedCaseWithSensitiveFields:any = {caseId : caseId};
         //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
-        //Just for test we put the key already decrypted
-        //keyDecrypted = af44f60c2c308c7904abaa211970c63201114eaf6a0ede5724b3fd9506967da9
+
         User.findOne({ username: username}).then((hospitalUser)=>{
             if(hospitalUser!=null){
                 GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
