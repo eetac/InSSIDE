@@ -96,10 +96,11 @@ export class HomeComponent implements OnInit {
     
     this.initService.decryptCase(decryptJSON).subscribe(
        data => {
-        console.log(data.status);
-        console.log(data);
+         
+         console.log(`Recieved Decrypted Data \n`,data);
+      
         // we have the decrypted data
-        this.decryptedData = data;
+        this.decryptedData = data.message;
         /* 
         console.log("After parsing");
         console.log(this.decryptCase);

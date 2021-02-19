@@ -64,7 +64,7 @@ async function register(req: Request, res: Response) {
         let newUser:IUser = new User({
             username :req.body.username,
             contactInfo: req.body.contactInfo,
-            password: "password-hidden",
+            password: password,
             publicKey: publicKey,
             privateKey: privateKey
         });
@@ -74,6 +74,7 @@ async function register(req: Request, res: Response) {
 
         newUser.save().then((data) => {
             console.log('User added successfully');
+            newUser.password = "password-hidden";
             res.status(201).json(newUser);
         }).catch((err) => {
             console.log(err)

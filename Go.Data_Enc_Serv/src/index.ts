@@ -2,7 +2,7 @@
 import app from './app'; //Exported App importing here
 //Execute Connection to BDD before launching the Server
 import dbHandler from './database';
-const config = require('./configurations/config');
+
 //Server definition
 const path = require('path');
 const packageJson = require('../package.json')

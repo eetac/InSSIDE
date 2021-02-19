@@ -1,6 +1,7 @@
 /*import goDataHelper from "../helpers/goDataHelper";*/
 import anonymizationHelper from "../lib/anonymization.class";
 import httpHelper from "../helpers/httpHelper";
+import mongoose,{ConnectionOptions} from "mongoose";
 const configWorker = require('../configurations/config');
 /*import config2 from "../configurations/config";*/
 /**
@@ -38,7 +39,17 @@ function timerEncrypt() {
         /*process.send("Error doing a post inside authentication: " + err);*/
     });
 }
-console.log("Running child process...");
-console.log(`Auto Encryption every: ${configWorker.autoEncryptSeconds} seconds`);
-/*process.send("Testing if runs even after 60seconds");*/
-timerEncrypt()
+const dbOptions: ConnectionOptions = {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+            }
+mongoose.connect(configWorker.DB.URI, dbOptions).then(r =>{
+    console.log('Connection w/ DB Successful!')
+    console.log("Running child process...");
+    console.log(`Auto Encryption every: ${configWorker.autoEncryptSeconds} seconds`);
+    /*process.send("Testing if runs even after 60seconds");*/
+    timerEncrypt()
+}).catch((err)=> {
+    //Already being handled in index.ts console.log('Connection Error w/DB');
+    console.log("Connection Error w/ DB, auto encrypt won't be ran!" )
+});

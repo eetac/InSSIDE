@@ -1,6 +1,6 @@
 import mongoose, { ConnectionOptions } from 'mongoose';
 import User, { IUser } from "./models/user";
-import config from "./configurations/config";
+const config = require('./configurations/config');
 const bcrypt = require('bcrypt');
 const crypto = require("crypto");
 

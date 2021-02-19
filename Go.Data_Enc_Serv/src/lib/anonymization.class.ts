@@ -42,15 +42,16 @@ function encryptCases(cases:any): Promise<IResult>{
             config.sensitiveData.forEach(sensitiveField => {
 
                 let sensitiveFieldLength = sensitiveField.split(",").length; //If there is a subSensitiveField like  address,phoneNumber
-                console.log("sensitiveField: "+sensitiveField);
+                /*console.log("sensitiveField: "+sensitiveField);*/
                 if (sensitiveFieldLength == 1) { //We don't need to split because sensitiveField doesn't have subSensitiveField
 
                     // If the beginning of the value is different of /ENC
                     // (so it has not been encrypted yet) we encrypt the field and add /ENC/creatorEmail at the beginning
-                    console.log("cases[i][sensitiveField]: "+cases[i][sensitiveField]);
+                    console.log(`${sensitiveField}: ${cases[i][sensitiveField]}`);
                     if (cases[i][sensitiveField].substring(0, 5) != "/ENC/") {
                         fieldsModified = 1; //Field Modified
                         let encryptedField: String = symmetricCipher.encryptSymmetric(cases[i][sensitiveField], encryptionKey,iv);
+                        console.log("Encrypted Val: "+encryptedField);
                         /*console.log(encryptedField);*/
                         cases[i][sensitiveField] = "/ENC/" + creator + "/" + encryptedField;
                     }
@@ -64,9 +65,11 @@ function encryptCases(cases:any): Promise<IResult>{
                     for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
                         //Cannot Encrypt Other Document as this contains the CIF HASH!
                         if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER")) {
-                            console.log("sensitiveFieldVal: " + cases[i][subSensitiveField[0]][k][subSensitiveField[1]]);
-
-                            console.log("Val: " + cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5));
+                            let subField  = sensitiveField[1];
+                            if(subSensitiveField[0] == "documents"){
+                                subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
+                            }
+                            console.log(`${subField}:  + ${cases[i][subSensitiveField[0]][k][subSensitiveField[1]]}`);
                             if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
                                 fieldsModified = 1; //SetModified
                                 let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
@@ -83,9 +86,11 @@ function encryptCases(cases:any): Promise<IResult>{
                 // We update only the cases where we have encrypted data, and if the key save was success
                 // we don't want to update case, if the key is not saved. As impossible to recover...
                 // Only update if key encryption didn't fail --> await this.updateCase(cases[i]);
+                console.log("Entered Update Case and Insertion License");
                 let keys;
                 //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
                 User.findOne({ username: "admin" }).then((managerUser)=>{
+                    console.log("managerUser: "+managerUser);
                     if(managerUser!=null){
                         // Now hash the CIP, as this will provide the merge capability between same cases from different hospital
                         // without needing to decrypt the actual information of the patient/case
@@ -93,6 +98,7 @@ function encryptCases(cases:any): Promise<IResult>{
                         while (cases[i]["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
                             positionCIP = positionCIP + 1;
                             if(positionCIP== cases[i]["documents"].length){
+                                console.log("Case not encrypted, need to provide valid CIP for all cases!");
                                 return reject({ message: "Case not encrypted, need to provide valid CIP for all cases!" , statusCode: 400});
                             }
                         }
@@ -102,6 +108,7 @@ function encryptCases(cases:any): Promise<IResult>{
                             "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER",
                             "number": cipHash
                         };
+                        console.log("Case Edited: \n"+cases[i]);
                         let keyEncrypted:string = asymmetricCipher.encryptKeyRSA(managerUser.publicKey,encryptionKey);
                         //Hospital, if the hospital does not exist in our DB we only save the keys of the admin
                         keys = [
@@ -114,10 +121,13 @@ function encryptCases(cases:any): Promise<IResult>{
                             cipHash:cipHash,
                             creatorEmail: creator,
                             keys:keys }); //New entry in our DRM server to store the keys
-                        /*console.log("STEP7 --> new Entry: " + newGoDataLicenseCase)*/
+                        console.log("STEP4 --> new License created: " + newGoDataLicenseCase)
                         newGoDataLicenseCase.save().then((data) => {
+                            console.log("STEP5 --> Case Updated: " + data)
                             //Update the data in GoData when actually everything correct!!!!
-                            goDataHelper.updateCase(cases[i]).catch((err)=>{
+                            goDataHelper.updateCase(cases[i]).then((resLicense)=>{
+                                console.log("STEP6 --> Case Updated: " + resLicense)
+                            }).catch((err)=>{
                                 console.log(err);
                                 return reject({ message: "Case not encrypted:  "+ err  , statusCode: 500});
                             })
