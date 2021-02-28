@@ -47,13 +47,17 @@ function encryptCases(cases:any): Promise<IResult>{
 
                     // If the beginning of the value is different of /ENC
                     // (so it has not been encrypted yet) we encrypt the field and add /ENC/creatorEmail at the beginning
+                    if(cases[i][sensitiveField]!=null){
                     console.log(`${sensitiveField}: ${cases[i][sensitiveField]}`);
-                    if (cases[i][sensitiveField].substring(0, 5) != "/ENC/") {
-                        fieldsModified = 1; //Field Modified
-                        let encryptedField: String = symmetricCipher.encryptSymmetric(cases[i][sensitiveField], encryptionKey,iv);
-                        console.log("Encrypted Val: "+encryptedField);
-                        /*console.log(encryptedField);*/
-                        cases[i][sensitiveField] = "/ENC/" + creator + "/" + encryptedField;
+                        if (cases[i][sensitiveField].substring(0, 5) != "/ENC/") {
+                            fieldsModified = 1; //Field Modified
+                            let encryptedField: String = symmetricCipher.encryptSymmetric(cases[i][sensitiveField], encryptionKey,iv);
+                            console.log("Encrypted Val: "+encryptedField);
+                            /*console.log(encryptedField);*/
+                            cases[i][sensitiveField] = "/ENC/" + creator + "/" + encryptedField;
+                        }
+                    }else{
+                        console.log(`${sensitiveField}: is null, not encrypting`);
                     }
                 }
                 else { //had sensitiveField configured in config with internal subfields of the objects stored in a array
@@ -62,22 +66,26 @@ function encryptCases(cases:any): Promise<IResult>{
                     // need to go over each document and encrypt the number of that document which we want to protect
                     // Also applies for addresses, which might contain phone and addresses
                     /*let fieldObjectsLength = ;*/
-                    for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
-                        //Cannot Encrypt Other Document as this contains the CIF HASH!
-                        if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID")) {
-                            let subField  = sensitiveField[1];
-                            if(subSensitiveField[0] == "documents"){
-                                subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
-                            }
-                            console.log(`${subField}:  + ${cases[i][subSensitiveField[0]][k][subSensitiveField[1]]}`);
-                            if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
-                                fieldsModified = 1; //SetModified
-                                let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
-                                let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey, iv);
-                                /*console.log(encryptedField)*/
-                                cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + creator + "/" + encryptedField
+                    if(cases[i][subSensitiveField[0]]!=null){
+                        for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
+                            //Cannot Encrypt Other Document as this contains the CIF HASH!
+                            if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP_HASH")) {
+                                let subField:string  = subSensitiveField[1];
+                                if(subSensitiveField[0] == "documents"){
+                                    subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
+                                }
+                                console.log(`${subField}: ${cases[i][subSensitiveField[0]][k][subSensitiveField[1]]}`);
+                                if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
+                                    fieldsModified = 1; //SetModified
+                                    let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
+                                    let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey, iv);
+                                    /*console.log(encryptedField)*/
+                                    cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + creator + "/" + encryptedField
+                                }
                             }
                         }
+                    }else{
+                        console.log(`${subSensitiveField[0]} is null, not encrypting this field!`);
                     }
                 }
             });
@@ -90,51 +98,63 @@ function encryptCases(cases:any): Promise<IResult>{
                 let keys;
                 //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
                 User.findOne({ username: "admin" }).then((managerUser)=>{
-                    console.log("managerUser: "+managerUser);
+                    /* console.log("managerUser: "+managerUser); */
                     if(managerUser!=null){
                         // Now hash the CIP, as this will provide the merge capability between same cases from different hospital
                         // without needing to decrypt the actual information of the patient/case
                         let positionCIP = 0;
-                        while (cases[i]["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
+                        let cipExists:boolean = false;
+                        /* while (cases[i]["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
                             positionCIP = positionCIP + 1;
                             if(positionCIP== cases[i]["documents"].length){
-                                console.log("Case not encrypted, need to provide valid CIP for all cases!");
-                                return reject({ message: "Case not encrypted, need to provide valid CIP for all cases!" , statusCode: 400});
+                                console.log( `Case not encrypted, need to provide valid CIP for case: ${cases[i]["id"]}`);
+                            }
+                        } */
+                        for(let docuIndx=0; docuIndx<cases[i]["documents"].length; docuIndx++){
+                            if(cases[i]["documents"][positionCIP]["type"] == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP"){
+                                cipExists = true;
+                                positionCIP = docuIndx;
+                                /* console.log("...............CIP FOUND........................."); */
+                                break;
                             }
                         }
-                        let fullFieldsToHash = cases[i]["documents"][positionCIP]["number"].toUpperCase();
-                        let cipHash = Bcrypt.hashSync(fullFieldsToHash,config.saltRounds);
-                        cases[i]["documents"][cases[i]["documents"].length] = {
-                            "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID",
-                            "number": cipHash
-                        };
-                        console.log("Case Edited: \n"+cases[i]);
-                        let keyEncrypted:string = asymmetricCipher.encryptKeyRSA(managerUser.publicKey,encryptionKey);
-                        //Hospital, if the hospital does not exist in our DB we only save the keys of the admin
-                        keys = [
-                            {
-                                hospitalName: "admin",
-                                usedKey: keyEncrypted
-                            }];
-                        const newGoDataLicenseCase:IGoDataLicensesSchema = new GoDataLicenses({
-                            caseId: cases[i]['id'],
-                            hashId:cipHash,
-                            creatorEmail: creator,
-                            keys:keys }); //New entry in our DRM server to store the keys
-                        console.log("STEP4 --> new License created: " + newGoDataLicenseCase)
-                        newGoDataLicenseCase.save().then((data) => {
-                            console.log("STEP5 --> Case Updated: " + data)
-                            //Update the data in GoData when actually everything correct!!!!
-                            goDataHelper.updateCase(cases[i]).then((resLicense)=>{
-                                console.log("STEP6 --> Case Updated: " + resLicense)
-                            }).catch((err)=>{
-                                console.log(err);
+                        if(cipExists){
+                            let fullFieldsToHash = cases[i]["documents"][positionCIP]["number"].toUpperCase();
+                            let cipHash = Bcrypt.hashSync(fullFieldsToHash,config.saltRounds);
+                            cases[i]["documents"][cases[i]["documents"].length] = {
+                                "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP_HASH",
+                                "number": cipHash
+                            };
+                            console.log("Case Edited: \n"+cases[i]);
+                            let keyEncrypted:string = asymmetricCipher.encryptKeyRSA(managerUser.publicKey,encryptionKey);
+                            //Hospital, if the hospital does not exist in our DB we only save the keys of the admin
+                            keys = [
+                                {
+                                    hospitalName: "admin",
+                                    usedKey: keyEncrypted
+                                }];
+                            const newGoDataLicenseCase:IGoDataLicensesSchema = new GoDataLicenses({
+                                caseId: cases[i]['id'],
+                                hashId:cipHash,
+                                creatorEmail: creator,
+                                keys:keys }); //New entry in our DRM server to store the keys
+                            console.log("STEP4 --> new License created: " + newGoDataLicenseCase)
+                            newGoDataLicenseCase.save().then((data) => {
+                                console.log("STEP5 --> Case Updated: " + data)
+                                //Update the data in GoData when actually everything correct!!!!
+                                goDataHelper.updateCase(cases[i]).then((resLicense)=>{
+                                    console.log("STEP6 --> Case Updated: " + resLicense)
+                                }).catch((err)=>{
+                                    console.log(err);
+                                    return reject({ message: "Case not encrypted:  "+ err  , statusCode: 500});
+                                })
+                            }).catch((err) => {
+                                console.log(err)
                                 return reject({ message: "Case not encrypted:  "+ err  , statusCode: 500});
                             })
-                        }).catch((err) => {
-                            console.log(err)
-                            return reject({ message: "Case not encrypted:  "+ err  , statusCode: 500});
-                        })
+                        }else{
+                            console.log( `Case not encrypted, need to provide valid CIP for case: ${cases[i]["id"]}`);
+                        }
                     }else{
                         console.log("Failed trying to encrypt the case Key for admin user, admin not found in database!");
                         return reject({ message: "Case not encrypted, admin not found"  , statusCode: 500});
@@ -163,7 +183,7 @@ function encryptCases(cases:any): Promise<IResult>{
 function decryptCases(username:string,hashId:string): Promise<IResult>{
     return new Promise((resolve,reject )=> {
         //Once we have the case we need to check to get the key to decrypt that is encrypted with publicKey of Hospital
-        let decryptedCaseWithSensitiveFields:any = {hashId : hashId};
+        let decryptedCaseWithSensitiveFields:any = {};
         //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
 
         User.findOne({ username: username}).then((hospitalUser)=>{
@@ -199,14 +219,18 @@ function decryptCases(username:string,hashId:string): Promise<IResult>{
                                         //If there is a document we have address,phoneNumber
                                         if (subSensitiveField.length == 1) {
                                             //If the beginning of the value is equal to /ENC/ we decrypt the field
-                                            if (spCase[sensitiveField].substring(0, 5) == "/ENC/") {
-                                                let sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split("/");
-                                                let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-                                                let encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue,);
-                                                /*let valueToDecrypt = spCase[sensitiveField].substring(42,)*///from 42 because after /ENC/ we have the id of the creator
-                                                let decryptedField: String = symmetricCipher.decryptSymmetric(encryptedFieldValue, keyDecrypted);
-                                                //spCase[sensitiveField] = decryptedField
-                                                decryptedCaseWithSensitiveFields[sensitiveField] = decryptedField;
+                                            if(spCase[sensitiveField]!=null){
+                                                if (spCase[sensitiveField].substring(0, 5) == "/ENC/") {
+                                                    let sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split("/");
+                                                    let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+                                                    let encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue,);
+                                                    /*let valueToDecrypt = spCase[sensitiveField].substring(42,)*///from 42 because after /ENC/ we have the id of the creator
+                                                    let decryptedField: String = symmetricCipher.decryptSymmetric(encryptedFieldValue, keyDecrypted);
+                                                    //spCase[sensitiveField] = decryptedField
+                                                    decryptedCaseWithSensitiveFields[sensitiveField] = decryptedField;
+                                                }
+                                            }else{
+                                                console.log(`${sensitiveField} is null, not decrypting this field!`);
                                             }
                                         }
                                         else {
@@ -216,24 +240,28 @@ function decryptCases(username:string,hashId:string): Promise<IResult>{
                                             // Also applies for addresses, which might contain phone and addresses
                                             /*let fieldObjectsLength = spCase[subSensitiveField[0]].length;
                                             for (let subSensitiveFields = 0; subSensitiveFields < fieldObjectsLength; subSensitiveFields++) {*/
-                                                spCase[subSensitiveField[0]].forEach((spCaseSubObject: any, index:  number)=>{
-                                                    if (!(subSensitiveField[0] == "documents" && spCaseSubObject["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID")) {
-                                                        let sensitiveFieldValueSplit = spCaseSubObject[subSensitiveField[1]].split("/");
-                                                        let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-                                                        let encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
-                                                        if (sensitiveFieldValueSplit[1] == "ENC") { //if is encrypted
-                                                            let decryptedField: String = symmetricCipher.decryptSymmetric(encryptedFieldValue, keyDecrypted);
-                                                            //spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
-                                                            if(subSensitiveField[0] == "documents"){
-                                                                let documentTypeSplit = spCaseSubObject["type"].split("_");
-                                                                let documentType = documentTypeSplit.splice(6,documentTypeSplit.length-1).join('');
-                                                                decryptedCaseWithSensitiveFields[documentType] = decryptedField;
-                                                            }else{
-                                                                decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
+                                                if(spCase[subSensitiveField[0]]!=null){
+                                                    spCase[subSensitiveField[0]].forEach((spCaseSubObject: any, index:  number)=>{
+                                                        if (!(subSensitiveField[0] == "documents" && spCaseSubObject["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP_HASH")) {
+                                                            let sensitiveFieldValueSplit = spCaseSubObject[subSensitiveField[1]].split("/");
+                                                            let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+                                                            let encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
+                                                            if (sensitiveFieldValueSplit[1] == "ENC") { //if is encrypted
+                                                                let decryptedField: String = symmetricCipher.decryptSymmetric(encryptedFieldValue, keyDecrypted);
+                                                                //spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+                                                                if(subSensitiveField[0] == "documents"){
+                                                                    let documentTypeSplit = spCaseSubObject["type"].split("_");
+                                                                    let documentType = documentTypeSplit.splice(6,documentTypeSplit.length-1).join('');
+                                                                    decryptedCaseWithSensitiveFields[documentType] = decryptedField;
+                                                                }else{
+                                                                    decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
+                                                                }
                                                             }
                                                         }
-                                                    }
-                                                });
+                                                    });
+                                                }else{
+                                                    console.log(`${subSensitiveField[0]} is null, not decrypting this field!`);
+                                                }
                                             /*}*/
                                         }
                                     });

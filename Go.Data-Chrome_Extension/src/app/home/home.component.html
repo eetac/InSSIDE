@@ -1,7 +1,7 @@
 <div class="container" *ngIf="userActive">
     <div class="row">
-        <div class="col-sm-6">
-            <h5>Decryption via DRM Server</h5>
+        <div class="col-lg-6">
+            <h5>Decryption</h5>
             <form [formGroup]="decryptForm" (ngSubmit)="decryptCase()">
                 <div class="form-group">
                     <label for="hashId">Hash Id</label>
@@ -14,8 +14,8 @@
                 </div>
             </form>
         </div>
-        <div class="col-sm-6">
-            <h5>Transfer Permissions to Hospital</h5>
+        <div class="col-lg-6">
+            <h5>Transfer License</h5>
             <form [formGroup]="transferForm" (ngSubmit)="shareAccesToHospitals()">
                 <div class="form-group">
                     <label for="usernameToTranfer">Destination Hospital</label>
@@ -23,15 +23,13 @@
                 </div>
                 <div class="form-group">
                     <button class="btn btn-success">
-                        Transfer Permissions
+                        Transfer License
                     </button>
                 </div>
             </form>
         </div>
     </div>
-    <br>
-    <br>
-    <h5>Decrypt Table</h5>
+    <h5>Decryption Table</h5>
     <hr>
     <table id="decryptedCase">
         <th *ngFor="let column of headers">
@@ -43,19 +41,6 @@
             <td>{{propertyField.value}}</td>
         </tr>
     </table>
-    <br>
-    <br>
-    <br>
-    <!-- <div class="card border-primary mb-3" style="max-width: 50rem">
-        <div class="card-header">Private Key</div>
-        <div *ngIf="hidePrivKey" class="card-body text-primary">
-            <p class="card-text">{{privateKey}}</p>
-        </div>
-        <button (click)="hidePrivateKey()" class="btn btn-primary">
-            Hide
-        </button>
-    </div> -->
-    <!-- This case appear if the user try to access home without being login-->
     <div class="container" *ngIf="!userActive">
         <div>
             <h5>You need to be login first, before coming to home!</h5>

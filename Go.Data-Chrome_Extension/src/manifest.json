@@ -10,18 +10,18 @@
     },
     "background":{
         "scripts":["background.js"],
-        "persistent": false
+        "persistent": true
     },
     "permissions":[
         "tabs",
-        "alarms",
         "activeTab",
         "https://ajax.googleapis.com/",
         "https://cdnjs.cloudflare.com/"
     ],
     "browser_action": {
         "default_title": "GoData",
-        "default_icon": "./assets/Go.Data_Logo.png"
+        "default_icon": "./assets/Go.Data_Logo.png",
+        "default_popup": "./index.html"
     },
     "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
 }

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { InitService } from 'src/services/init.service';
-
+import {Router} from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -10,7 +10,7 @@ import { InitService } from 'src/services/init.service';
 export class AppComponent {
   title = 'GoData Anonymization';
   userActive:boolean;
-  constructor(private initService: InitService) { 
+  constructor(private initService: InitService,private router: Router) {
     this.userStatus()
   }
 
@@ -19,13 +19,12 @@ export class AppComponent {
   }
   userStatus(){
     let userData = JSON.parse(localStorage.getItem('user'));
-    let key = JSON.parse(localStorage.getItem('key'))
-    if(userData == null || key == null){
-      this.userActive = false
+    if(userData == null){
+      this.userActive = false;
     }
     else{
-      this.userActive = true
-
+      this.userActive = true;
+      this.router.navigate(['/home']);
     }
   }
 }

@@ -16,13 +16,13 @@ interface IConfig {
     autoEncryptSeconds: number
 }
 const config:IConfig = {
-    URL : "http://localhost:8000/api", //Go Data URI
+    URL : "http://localhost:3000/api", //Go Data URI
     IV_LENGTH : 16, // Minimum Length 16 IV
     saltRounds : 10, // Hash Function Rounds, recommended for security at least 10
     USER :"krunal@krunal.com",
-    PASSWORD : "kruskechi123",
+    PASSWORD : "kruskechi1234",
     USER_AGENT : "GoData LocalHost Connector 2.5.6",
-    OUTBREAK_ID : "336be6ba-07e3-4001-b040-b559a0fdd7d3",
+    OUTBREAK_ID : "eb65be89-8d64-46c9-8e30-c3009290f539",
     sensitiveData : ["firstName","middleName","lastName","documents,number","addresses,phoneNumber"],
     DB: {
         URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/DRM',
