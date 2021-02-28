@@ -25,7 +25,7 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     this.userStatus()
     this.decryptForm = this.formBuilder.group({
-      caseId: ['', [Validators.required]]
+      hashId: ['', [Validators.required]]
     });
     this.transferForm = this.formBuilder.group({
       usernameToTranfer: ['', [Validators.required]]
@@ -49,13 +49,13 @@ export class HomeComponent implements OnInit {
 
   }
   getKey() {
-    if (this.fdecryptForm.caseId.value != "" ) {
+    if (this.fdecryptForm.hashId.value != "" ) {
 
       let username = JSON.parse(localStorage.getItem('user')).username
       console.log('USERNAME ' + username)
       let getKeyJSON = {
         username: username,
-        caseId: this.fdecryptForm.caseId.value,
+        hashId: this.fdecryptForm.hashId.value,
       }
       this.initService.getKey(getKeyJSON).subscribe(
         data => {
@@ -70,7 +70,7 @@ export class HomeComponent implements OnInit {
        });
     }
     else {
-      alert("Error: CaseId Required")
+      alert("Error: HashId Required")
     }
   }
 
@@ -91,7 +91,7 @@ export class HomeComponent implements OnInit {
 /*     this.loading = true; */
     let decryptJSON = {
       username: JSON.parse(localStorage.getItem('user')).username,
-      caseId: this.fdecryptForm.caseId.value
+      hashId: this.fdecryptForm.hashId.value
     }
     
     this.initService.decryptCase(decryptJSON).subscribe(
@@ -173,12 +173,12 @@ export class HomeComponent implements OnInit {
   } */
 
   shareAccesToHospitals(){
-    if ((this.fdecryptForm.caseId.value != "")&&(this.ftransferForm.usernameToTranfer.value != "")) {
+    if ((this.fdecryptForm.hashId.value != "")&&(this.ftransferForm.usernameToTranfer.value != "")) {
       let username = JSON.parse(localStorage.getItem('user')).username
       console.log('Username: ' + username+ ' usernameToTransfer: '+this.ftransferForm.usernameToTranfer.value)
       let transferPermissionJSON = {
         username: username,
-        caseId: this.fdecryptForm.caseId.value,
+        hashId: this.fdecryptForm.hashId.value,
         usernameToTransfer: this.ftransferForm.usernameToTranfer.value
       }
       this.initService.transferKey(transferPermissionJSON).subscribe(
@@ -192,7 +192,7 @@ export class HomeComponent implements OnInit {
        });
     }
     else {
-      alert("Error: CaseId and Destination Hospital Required")
+      alert("Error: hashId and Destination Hospital Required")
     }
   }
 }

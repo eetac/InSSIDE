@@ -51,5 +51,5 @@ mongoose.connect(configWorker.DB.URI, dbOptions).then(r =>{
     timerEncrypt()
 }).catch((err)=> {
     //Already being handled in index.ts console.log('Connection Error w/DB');
-    console.log("Connection Error w/ DB, auto encrypt won't be ran!" )
+    console.log("Connection Error w/ license DB, auto encrypt won't be ran!" )
 });

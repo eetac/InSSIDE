@@ -64,7 +64,7 @@ function encryptCases(cases:any): Promise<IResult>{
                     /*let fieldObjectsLength = ;*/
                     for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
                         //Cannot Encrypt Other Document as this contains the CIF HASH!
-                        if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER")) {
+                        if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID")) {
                             let subField  = sensitiveField[1];
                             if(subSensitiveField[0] == "documents"){
                                 subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
@@ -105,7 +105,7 @@ function encryptCases(cases:any): Promise<IResult>{
                         let fullFieldsToHash = cases[i]["documents"][positionCIP]["number"].toUpperCase();
                         let cipHash = Bcrypt.hashSync(fullFieldsToHash,config.saltRounds);
                         cases[i]["documents"][cases[i]["documents"].length] = {
-                            "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER",
+                            "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID",
                             "number": cipHash
                         };
                         console.log("Case Edited: \n"+cases[i]);
@@ -118,7 +118,7 @@ function encryptCases(cases:any): Promise<IResult>{
                             }];
                         const newGoDataLicenseCase:IGoDataLicensesSchema = new GoDataLicenses({
                             caseId: cases[i]['id'],
-                            cipHash:cipHash,
+                            hashId:cipHash,
                             creatorEmail: creator,
                             keys:keys }); //New entry in our DRM server to store the keys
                         console.log("STEP4 --> new License created: " + newGoDataLicenseCase)
@@ -160,15 +160,15 @@ function encryptCases(cases:any): Promise<IResult>{
  *    {"caseId":"bla-bla-bla","username":"admin"}
  *
  */
-function decryptCases(username:string,caseId:string): Promise<IResult>{
+function decryptCases(username:string,hashId:string): Promise<IResult>{
     return new Promise((resolve,reject )=> {
         //Once we have the case we need to check to get the key to decrypt that is encrypted with publicKey of Hospital
-        let decryptedCaseWithSensitiveFields:any = {caseId : caseId};
+        let decryptedCaseWithSensitiveFields:any = {hashId : hashId};
         //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
 
         User.findOne({ username: username}).then((hospitalUser)=>{
             if(hospitalUser!=null){
-                GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
+                GoDataLicenses.findOne({ hashId: hashId}).then((goDataLicense)=>{
                     if(goDataLicense!=null){
                         // GoDataLicense found...
                         let i = 0;
@@ -183,7 +183,7 @@ function decryptCases(username:string,caseId:string): Promise<IResult>{
                             //We will return the key encrypted with the public key, so only the
                             // hospital or user with private key can decrypt and get the symmetric key!
                             /*const encrypt: EncryptCases = new EncryptCases;*/
-                            goDataHelper.getCase(caseId).then((spCase) => {
+                            goDataHelper.getCase(goDataLicense.caseId).then((spCase) => {
                                 if (spCase.error == null) {
                                     //No error in the response, means correct result
                                     //Both username and case exists
@@ -217,7 +217,7 @@ function decryptCases(username:string,caseId:string): Promise<IResult>{
                                             /*let fieldObjectsLength = spCase[subSensitiveField[0]].length;
                                             for (let subSensitiveFields = 0; subSensitiveFields < fieldObjectsLength; subSensitiveFields++) {*/
                                                 spCase[subSensitiveField[0]].forEach((spCaseSubObject: any, index:  number)=>{
-                                                    if (!(subSensitiveField[0] == "documents" && spCaseSubObject["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_OTHER")) {
+                                                    if (!(subSensitiveField[0] == "documents" && spCaseSubObject["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID")) {
                                                         let sensitiveFieldValueSplit = spCaseSubObject[subSensitiveField[1]].split("/");
                                                         let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
                                                         let encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
