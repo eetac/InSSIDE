@@ -139,7 +139,7 @@ async function dataKeyTransfer(req:Request, res: Response){
     let username = req.body.username; // TODO: Future retrieve from token!
     let usernameToTransfer = req.body.usernameToTransfer; // Directly in the json as nothing personal
     console.log("Transfer Solicited for "+usernameToTransfer);
-    let caseId = req.body.caseId;
+    let hashId = req.body.hashId;
     //We need both the private key of the existent user and the private key of the transfer user
     // First we find that the username exists
     let existentUser = await User.findOne({ username: username});
@@ -148,7 +148,7 @@ async function dataKeyTransfer(req:Request, res: Response){
     }
     let targetUser =  await User.findOne({ username: usernameToTransfer});
     // Contains the symmetric key!
-    GoDataLicenses.findOne({ caseId: caseId}).then((licenseToTransfer)=>{
+    GoDataLicenses.findOne({ hashId: hashId}).then((licenseToTransfer)=>{
         if(licenseToTransfer!=null){
            /* let JsonLicenseToTransfer = licenseToTransfer;
             console.log(JsonLicenseToTransfer);*/

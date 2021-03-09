@@ -68,7 +68,7 @@ function encryptCases(cases:any): Promise<IResult>{
                     /*let fieldObjectsLength = ;*/
                     if(cases[i][subSensitiveField[0]]!=null){
                         for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
-                            //Cannot Encrypt Other Document as this contains the CIF HASH!
+                            //Cannot Encrypt Other Document as this contains the CIP HASH!
                             if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP_HASH")) {
                                 let subField:string  = subSensitiveField[1];
                                 if(subSensitiveField[0] == "documents"){
@@ -125,7 +125,7 @@ function encryptCases(cases:any): Promise<IResult>{
                                 "type": "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP_HASH",
                                 "number": cipHash
                             };
-                            console.log("Case Edited: \n"+cases[i]);
+                            /* console.log("Case Edited: \n"+cases[i]); */
                             let keyEncrypted:string = asymmetricCipher.encryptKeyRSA(managerUser.publicKey,encryptionKey);
                             //Hospital, if the hospital does not exist in our DB we only save the keys of the admin
                             keys = [

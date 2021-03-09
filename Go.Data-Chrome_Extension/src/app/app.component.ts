@@ -21,6 +21,7 @@ export class AppComponent {
     let userData = JSON.parse(localStorage.getItem('user'));
     if(userData == null){
       this.userActive = false;
+      this.router.navigate(['/login']);
     }
     else{
       this.userActive = true;
