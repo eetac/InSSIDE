@@ -25,11 +25,11 @@ const encryptCases: any = async (req: Request, res: Response)=>{
  *    {"hashId":"bla-bla-bla","username":"admin"}
  *
  */
-const decryptCase: any = async (req: Request, res: Response)=> {
+/*const decryptCase: any = async (req: Request, res: Response)=> {
     anonymizationHelper.decryptCases(req.body.username,req.body.hashId).then((result)=>{
         return res.status(result.statusCode).json(result);
     }).catch((erroneousResult)=>{
         return res.status(erroneousResult.statusCode).json( erroneousResult );
     });
-}
-export default {encryptCases,decryptCase};
+}*/
+export default {encryptCases};

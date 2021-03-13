@@ -2,12 +2,20 @@ import mongoose, { Document, Schema } from 'mongoose';
 //USERS OF THE DRM SERVER
 const UserSchema: Schema = new Schema({
 
-    username: {
+    email: {
         type: String,
         required: true,
         unique:true
     },
     password: {
+        type:String,
+        required:true
+    },
+    institutionName:{
+        type:String,
+        required:true
+    },
+    userGoDataId:{
         type:String,
         required:true
     },
@@ -22,10 +30,12 @@ const UserSchema: Schema = new Schema({
 });
 //Interface for the User Document
 export interface IUser extends Document {
-    username: string;
+    email: string;
     password: string;
     publicKey: string;
     privateKey: string;
+    userGoDataId:string;
+    institutionName:string;
 }
 export default mongoose.model<IUser>('User', UserSchema,'users');
 /*

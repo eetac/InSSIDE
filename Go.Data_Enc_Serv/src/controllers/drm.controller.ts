@@ -8,23 +8,23 @@ const crypto = require("crypto");
 
 async function login(req: Request, res: Response) {
 
-    console.log('Log in -> username: ' + req.body.username + ' ' + req.body.password)
-    if (!req.body.username || !req.body.password) {
-        return res.status(400).json({ 'msg': 'You need to send username and password' });
+    console.log('Log in -> email: ' + req.body.email + ' ' + req.body.password)
+    if (!req.body.email || !req.body.password) {
+        return res.status(400).json({ 'msg': 'You need to send email and password' });
     }
-    User.findOne({ username: req.body.username }).then((user)=>{
+    User.findOne({ email: req.body.email }).then((user)=>{
         if(user!=null){
             if (Bcrypt.compareSync(req.body.password, user.password)) {
-                console.log("Login Successfull");
-                res.status(200).send({ message: 'Login Successfull' });
+                console.log("Login Successful");
+                res.status(200).send({ message: 'Login Successful' });
             }
             else {
-                console.log("Login Failed, The username and password don\'t match.");
-                return res.status(400).send({ message: 'The username and password don\'t match.' });
+                console.log("Login Failed, The email and password don\'t match.");
+                return res.status(400).send({ message: 'The email and password don\'t match.' });
             }
         }else{
             console.log("Login Failed, Failed while trying to login, now user found");
-            res.status(400).send({ message: 'Login Failed, Username/Password Incorrect or Not Found!' });
+            res.status(400).send({ message: 'Login Failed, email/Password Incorrect or Not Found!' });
         }
     }).catch((err)=>{
         console.log("Login Failed, Failed while trying to login");
@@ -34,15 +34,18 @@ async function login(req: Request, res: Response) {
 
 async function register(req: Request, res: Response) {
 
-    const username = req.body.username;
+    const email = req.body.email;
+    const userGoDataId = req.body.userGoDataId;
+    const institutionName = req.body.institutionName;
+
     console.log(req.body);
-    let existUser = await User.findOne({ username: username });
+    let existUser = await User.findOne({ email: email });
     if (existUser) {
-        res.status(403).json({ message: "Already exist a user with this username" });
+        res.status(403).json({ message: "Already exist a user with this email" });
     }
     else {
         // We need the managerUser to encrypt the private key of other users
-        /*let managerUser = new User(await User.findOne({ username: "admin" }));*/
+        /*let managerUser = new User(await User.findOne({ email: "admin" }));*/
         //When we want to add new user we need to generate RSA keys
         //We need to hash the password
         const saltRounds = 10;
@@ -62,10 +65,12 @@ async function register(req: Request, res: Response) {
                 }
             });
         let newUser:IUser = new User({
-            username :req.body.username,
-            password: password,
-            publicKey: publicKey,
-            privateKey: privateKey
+            email           :   email,
+            password        :   password,
+            userGoDataId    :   userGoDataId,
+            institutionName :   institutionName,
+            publicKey       :   publicKey,
+            privateKey      :   privateKey
         });
         // New user will be sent to the user who just registered, on top of that we need to encrypt the private key itself
         // with the user password, so that even on a db leak, all of the data is protected by hospital key!
@@ -87,20 +92,20 @@ async function getKeyOfCase(req: Request, res: Response) {
     //Hospital ask for the decryption key of a case and DRM return the key encrypted with the pubKey for security reasons
     let caseId = req.body.caseId;//req.params.hashCase;
     //TODO: Future get from token, now just testing...
-    let username:string = req.body.username;
+    let email:string = req.body.email;
 
         GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
-            if(goDataLicense!=null){
+            if(goDataLicense != null){
                 // GoDataLicense found...
                 let i = 0;
-                // Find where the hospitalName is equal to username, inside the licenses...
-                while (goDataLicense.keys[i].hospitalName.toString() != username) {
+                // Find where the hospitalName is equal to email, inside the licenses...
+                while (goDataLicense.keys[i].email.toString() != email) {
                     i = i + 1;
                     if(goDataLicense.keys.length==i){
                         return res.status(404).send({"error": "Don't have permission for the case"});
                     }
                 }
-                if (goDataLicense.keys[i].hospitalName.toString() == username) {
+                if (goDataLicense.keys[i].email.toString() == email) {
                     //We will return the key encrypted with the public key, so only the
                     // hospital or user with private key can decrypt and get the symmetric key!
 
@@ -132,20 +137,21 @@ async function getKeyOfCase(req: Request, res: Response) {
         });
 }
 
+// TODO: FIX ME!!
 async function dataKeyTransfer(req:Request, res: Response){
 
     //Only an existent user of a case, can transfer the key to some other hospital
-    let username = req.body.username; // TODO: Future retrieve from token!
-    let usernameToTransfer = req.body.usernameToTransfer; // Directly in the json as nothing personal
-    console.log("Transfer Solicited for "+usernameToTransfer);
+    let email = req.body.email; // TODO: Future retrieve from token!
+    let emailToTransfer = req.body.emailToTransfer; // Directly in the json as nothing personal
+    console.log("Transfer Solicited for "+emailToTransfer);
     let hashId = req.body.hashId;
     //We need both the private key of the existent user and the private key of the transfer user
-    // First we find that the username exists
-    let existentUser = await User.findOne({ username: username});
+    // First we find that the email exists
+    let existentUser = await User.findOne({ email: email});
     if(existentUser==null){
         return res.status(400).send({"error": "Cannot transfer,User doesn't exist"});
     }
-    let targetUser =  await User.findOne({ username: usernameToTransfer});
+    let targetUser =  await User.findOne({ email: emailToTransfer});
     // Contains the symmetric key!
     GoDataLicenses.findOne({ hashId: hashId}).then((licenseToTransfer)=>{
         if(licenseToTransfer!=null){
@@ -153,14 +159,14 @@ async function dataKeyTransfer(req:Request, res: Response){
             console.log(JsonLicenseToTransfer);*/
             // GoDataLicense found...
             let i = 0;
-            // Find where the hospitalName is equal to username, inside the licenses...
-            while (licenseToTransfer.keys[i].hospitalName.toString() != username) {
+            // Find where the hospitalName is equal to email, inside the licenses...
+            while (licenseToTransfer.keys[i].email.toString() != email) {
                 i = i + 1;
                 if(licenseToTransfer.keys.length==i){
                     return res.status(404).send({"error": "Don't have permission for the case"});
                 }
             }
-            if (licenseToTransfer.keys[i].hospitalName.toString() == username) {
+            if (licenseToTransfer.keys[i].email.toString() == email) {
                 //User exists
                 if(targetUser!=null){
                     //Target user actually exists
@@ -173,10 +179,13 @@ async function dataKeyTransfer(req:Request, res: Response){
                     // Step3. Add they key to the License with other keys
                     let newKey =
                         {
-                            hospitalName: targetUser.username,
-                            usedKey: keyEncrypted
+                            institutionName: targetUser.institutionName,
+                            usedKey : keyEncrypted,
+                            userGoDataId:targetUser.userGoDataId,
+                            email:targetUser.email
                         };
                     const queryUpdate = { _id: licenseToTransfer._id };
+                    // TODO: FIX THE PRIVATE KEY USAGE IN LICENSE TRANSFER!
                     GoDataLicenses.updateOne( queryUpdate, { "$push": { keys: newKey } }).then( (updateRes)=> {
                         //console.debug( "Chat added to user:  ", updateRes );
                    // Step4. Notify user, that the transfer was successfull

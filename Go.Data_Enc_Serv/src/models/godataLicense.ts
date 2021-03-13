@@ -6,14 +6,17 @@ const GoDataLicensesSchema: Schema = new Schema({
     hashId: { type: String, required: true}, // CIP Hash of the case
     creatorEmail:{type: String, required: true}, //To avoid problems with two cases that are equal from different  
     keys: [{
-        hospitalName: { type: String, required: true},
-            usedKey : { type: String, required: true}
-
+        institutionName: { type: String, required: true},
+            usedKey : { type: String, required: true},
+            userGoDataId  : {type:String, required:true},
+            email   : {type:String, required:true}
     }]
 });
 export interface key{
-    hospitalName: string,
-    usedKey : string
+    institutionName: string,
+    usedKey : string,
+    userGoDataId:string,
+    email:string
 }
 //Interface for the User Document
 export interface IGoDataLicensesSchema extends Document {

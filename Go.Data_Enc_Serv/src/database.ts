@@ -61,11 +61,12 @@ function createAdmin():Promise<boolean>{
                             }
                         });
                     let managerUser:IUser = new User({
-                        username :"admin",
-                        contactInfo: "admin@admin.com",
-                        password: password,
-                        publicKey: publicKey,
-                        privateKey: privateKey
+                        email           :   config.USER,
+                        password        :   config.PASSWORD,
+                        userGoDataId    :   config.USERGODATAID,
+                        institutionName :   config.INSTITUTION,
+                        publicKey       :   publicKey,
+                        privateKey      :   privateKey
                     });
                     managerUser.save().then((_) => {
                         console.log("admin created with username:admin & password:admin; Remember to change!");
