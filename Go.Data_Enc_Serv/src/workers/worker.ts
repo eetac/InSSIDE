@@ -23,13 +23,13 @@ function timerEncrypt() {
             let cases = JSON.parse(response);
             console.log("Gonna run encryption...");
             anonymizationHelper.encryptCases(cases).then((res) => {
-                console.log(`Auto Encryption ran successfully, next auto encryption in: ${configWorker.autoEncryptSeconds}`);
+                console.log(`Auto Encryption ran successfully, next auto encryption in: ${configWorker.AUTOENCRYPTIONTIMER}`);
                 /*process.send(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);*/
-                setTimeout(timerEncrypt, configWorker.autoEncryptSeconds * 1000);
+                setTimeout(timerEncrypt, configWorker.AUTOENCRYPTIONTIMER * 1000);
             }).catch((erroneousResult: any) => {
                 console.log(`Error while auto encrypting cases :: ${erroneousResult}`);
-                console.log(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);
-                setTimeout(timerEncrypt, configWorker.autoEncryptSeconds * 1000);
+                console.log(`Next auto encryption in: ${configWorker.AUTOENCRYPTIONTIMER}`);
+                setTimeout(timerEncrypt, configWorker.AUTOENCRYPTIONTIMER * 1000);
             });
         }).catch((err: any) => {
             console.log(err);
@@ -46,7 +46,7 @@ const dbOptions: ConnectionOptions = {
 mongoose.connect(configWorker.DB.URI, dbOptions).then(r =>{
     console.log('Connection w/ DB Successful!')
     console.log("Running child process...");
-    console.log(`Auto Encryption every: ${configWorker.autoEncryptSeconds} seconds`);
+    console.log(`Auto Encryption every: ${configWorker.AUTOENCRYPTIONTIMER} seconds`);
     /*process.send("Testing if runs even after 60seconds");*/
     timerEncrypt()
 }).catch((err)=> {

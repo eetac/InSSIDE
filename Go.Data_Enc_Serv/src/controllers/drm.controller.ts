@@ -24,7 +24,7 @@ async function login(req: Request, res: Response) {
             }
         }else{
             console.log("Login Failed, Failed while trying to login, now user found");
-            res.status(400).send({ message: 'Failed while trying to login, now user found' });
+            res.status(400).send({ message: 'Login Failed, Username/Password Incorrect or Not Found!' });
         }
     }).catch((err)=>{
         console.log("Login Failed, Failed while trying to login");
@@ -63,7 +63,6 @@ async function register(req: Request, res: Response) {
             });
         let newUser:IUser = new User({
             username :req.body.username,
-            contactInfo: req.body.contactInfo,
             password: password,
             publicKey: publicKey,
             privateKey: privateKey

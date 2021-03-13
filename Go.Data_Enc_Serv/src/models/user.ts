@@ -7,10 +7,6 @@ const UserSchema: Schema = new Schema({
         required: true,
         unique:true
     },
-    contactInfo: {
-        type:String,
-        required:true
-    },
     password: {
         type:String,
         required:true
@@ -27,7 +23,6 @@ const UserSchema: Schema = new Schema({
 //Interface for the User Document
 export interface IUser extends Document {
     username: string;
-    contactInfo: string;
     password: string;
     publicKey: string;
     privateKey: string;

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 
 import { InitService } from 'src/services/init.service';
+import { AuthenticationService } from 'src/services/authentication.service';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
@@ -18,6 +19,7 @@ export class RegisterComponent implements OnInit {
   constructor(
     private formBuilder: FormBuilder,
     private router: Router,
+    private authenticationService: AuthenticationService,
     private initService: InitService
   ) { }
 
@@ -46,7 +48,17 @@ export class RegisterComponent implements OnInit {
       password: this.f.password.value,
       contactInfo: this.f.contactInfo.value
     }
-    this.initService.register(registerJSON).subscribe(
+    this.authenticationService.register(this.f.username.value,this.f.password.value).subscribe(user=>{
+      alert("This is your Private Key (store it securely): "+ user.privateKey);
+      //this.router.navigate(['/home'])
+      this.loading = false;
+    },
+    error=>{
+      alert(error.message);
+      this.loading = false;
+    }
+    );
+    /* this.initService.register(registerJSON).subscribe(
        data => {
        let loginJSON = {
           username: this.f.username.value,
@@ -64,7 +76,7 @@ export class RegisterComponent implements OnInit {
       error => {
           alert(error.message);
           this.loading = false;
-      });
+      }); */
 }
 
 }

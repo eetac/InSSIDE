@@ -39,7 +39,7 @@ function encryptCases(cases:any): Promise<IResult>{
             // defined in the config.ts must be encrypted
 
             // First we go over each sensitive field, search in the case for the field and encrypt
-            config.sensitiveData.forEach(sensitiveField => {
+            config.SENSITIVEDATA.forEach(sensitiveField => {
 
                 let sensitiveFieldLength = sensitiveField.split(",").length; //If there is a subSensitiveField like  address,phoneNumber
                 /*console.log("sensitiveField: "+sensitiveField);*/
@@ -69,7 +69,7 @@ function encryptCases(cases:any): Promise<IResult>{
                     if(cases[i][subSensitiveField[0]]!=null){
                         for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
                             //Cannot Encrypt Other Document as this contains the CIP HASH!
-                            if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP_HASH")) {
+                            if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == config.DOCUMENT_HASH)) {
                                 let subField:string  = subSensitiveField[1];
                                 if(subSensitiveField[0] == "documents"){
                                     subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
@@ -212,9 +212,9 @@ function decryptCases(username:string,hashId:string): Promise<IResult>{
 
                                     let keyDecrypted:string = asymmetricCipher.decryptKeyRSA(hospitalUser.privateKey,encryptedKey);
                                     console.log("key Decrypted: " +keyDecrypted);
-                                    let tes = config.sensitiveData;
+                                    let tes = config.SENSITIVEDATA;
                                     //Decrypting
-                                    config.sensitiveData.forEach(sensitiveField => {
+                                    config.SENSITIVEDATA.forEach(sensitiveField => {
                                         let subSensitiveField = sensitiveField.split(",");
                                         //If there is a document we have address,phoneNumber
                                         if (subSensitiveField.length == 1) {

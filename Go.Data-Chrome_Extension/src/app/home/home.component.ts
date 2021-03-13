@@ -1,29 +1,30 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { InitService } from 'src/services/init.service';
-
+import { AuthenticationService } from 'src/services/authentication.service';
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
 })
 export class HomeComponent implements OnInit {
-  //Table
-  headers = ["Property","Sensitive Data"];
+  // Table
+  headers = ['Property', 'Sensitive Data'];
   decryptedData = {};
 
-  hidePrivKey:boolean;
+  hidePrivKey: boolean;
   /* public sensitiveData = ["firstName","middleName","lastName","addresses,phoneNumber"] */
   userActive: boolean;
   decryptForm: FormGroup;
   transferForm: FormGroup;
   constructor(
     private formBuilder: FormBuilder,
-    private initService: InitService
+    private initService: InitService,
+    private authenticationService: AuthenticationService
   ) { }
 
   ngOnInit(): void {
-    this.userStatus()
+    this.userStatus();
     this.decryptForm = this.formBuilder.group({
       hashId: ['', [Validators.required]]
     });
@@ -37,9 +38,9 @@ export class HomeComponent implements OnInit {
 
   userStatus() {
 
-    let userData = JSON.parse(localStorage.getItem('user'));
+    const userData = this.authenticationService.currentUserValue;
     if (userData == null) {
-      this.userActive = false
+      this.userActive = false;
     }
     else {
       this.userActive = true;
@@ -49,19 +50,19 @@ export class HomeComponent implements OnInit {
 
   }
   getKey() {
-    if (this.fdecryptForm.hashId.value != "" ) {
+    if (this.fdecryptForm.hashId.value != '' ) {
 
-      let username = JSON.parse(localStorage.getItem('user')).username
-      console.log('USERNAME ' + username)
-      let getKeyJSON = {
-        username: username,
+      const username = JSON.parse(localStorage.getItem('user')).username;
+      console.log('USERNAME ' + username);
+      const getKeyJSON = {
+        username,
         hashId: this.fdecryptForm.hashId.value,
-      }
+      };
       this.initService.getKey(getKeyJSON).subscribe(
         data => {
-          console.log("RECEIVED")
+          console.log('RECEIVED');
             /* let res = JSON.stringify(data) */
-            console.log(data)
+          console.log(data);
             /* let key = this.decryptSymKey(data.keyUsed)
             this.decryptCase(key,data) */
        },
@@ -70,10 +71,12 @@ export class HomeComponent implements OnInit {
        });
     }
     else {
-      alert("Error: HashId Required")
+      alert('Error: HashId Required');
     }
   }
-
+  decryptCase(){
+    //donothig...
+  }
   /* decryptSymKey(keyEncrypted: bigint){
     console.log(keyEncrypted);
     let privUser = JSON.parse(localStorage.getItem('key'));
@@ -81,6 +84,7 @@ export class HomeComponent implements OnInit {
     console.log(bigintToText(symmetricKey))
     return bigintToText(symmetricKey);
   } */
+  /*
   decryptCase() {
 
     // stop here if form is invalid
@@ -88,44 +92,44 @@ export class HomeComponent implements OnInit {
         return;
     }
 
-/*     this.loading = true; */
-    let decryptJSON = {
+     this.loading = true; 
+    const decryptJSON = {
       username: JSON.parse(localStorage.getItem('user')).username,
       hashId: this.fdecryptForm.hashId.value
-    }
-    
+    };
+
     this.initService.decryptCase(decryptJSON).subscribe(
        data => {
-         
-         console.log(`Recieved Decrypted Data \n`,data);
-      
+
+         console.log(`Recieved Decrypted Data \n`, data);
+
         // we have the decrypted data
-        this.decryptedData = data.message;
-        /* 
+         this.decryptedData = data.message;
+        /*
         console.log("After parsing");
         console.log(this.decryptCase);
-         */        
         
+
       },
       error => {
           alert(error.message);
-         /*  this.loading = false; */
+           this.loading = false; 
       });
 }
-  /* decryptCase(key: string, data:any){
+   decryptCase(key: string, data:any){
     let username;
-     if(data.isTheCreator == "y"){ 
+     if(data.isTheCreator == "y"){
       username = JSON.parse(localStorage.getItem('user')).username
      }
     else{ //If is not the creator we need to split by the email of the creator that is sended from backend
       username = data.emailCreator
-    } 
-   
+    }
+
     console.log(data.spCase)
     this.sensitiveData.forEach(element => {
       var isDocument = element.split(",").length; //If there is a document we have address,phoneNumber
       if (isDocument == 1) {
-        //If the beggining of the value is equal to /ENC/ we decrypt the field 
+        //If the beggining of the value is equal to /ENC/ we decrypt the field
         if (data.spCase[element].substring(0, 5) == "/ENC/") {
           var toSplit = data.spCase[element]; //Because we need to take only the field encrypted not the /ENC/creator
           var splittedField = toSplit.split("/"+username+"/");
@@ -173,26 +177,26 @@ export class HomeComponent implements OnInit {
   } */
 
   shareAccesToHospitals(){
-    if ((this.fdecryptForm.hashId.value != "")&&(this.ftransferForm.usernameToTranfer.value != "")) {
-      let username = JSON.parse(localStorage.getItem('user')).username
-      console.log('Username: ' + username+ ' usernameToTransfer: '+this.ftransferForm.usernameToTranfer.value)
-      let transferPermissionJSON = {
-        username: username,
+    if ((this.fdecryptForm.hashId.value != '') && (this.ftransferForm.usernameToTranfer.value != '')) {
+      const username = JSON.parse(localStorage.getItem('user')).username;
+      console.log('Username: ' + username + ' usernameToTransfer: ' + this.ftransferForm.usernameToTranfer.value);
+      const transferPermissionJSON = {
+        username,
         hashId: this.fdecryptForm.hashId.value,
         usernameToTransfer: this.ftransferForm.usernameToTranfer.value
-      }
+      };
       this.initService.transferKey(transferPermissionJSON).subscribe(
         data => {
-          console.log("RECEIVED")
-            let res = JSON.stringify(data)
-            alert("Case license transfer sucessfull!")
+          console.log('RECEIVED');
+          const res = JSON.stringify(data);
+          alert('Case license transfer sucessfull!');
        },
        error => {
            alert(error.message);
        });
     }
     else {
-      alert("Error: hashId and Destination Hospital Required")
+      alert('Error: hashId and Destination Hospital Required');
     }
   }
 }

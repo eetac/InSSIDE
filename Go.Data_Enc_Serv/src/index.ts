@@ -2,7 +2,7 @@
 import app from './app'; //Exported App importing here
 //Execute Connection to BDD before launching the Server
 import dbHandler from './database';
-
+const config = require('./configurations/config');
 //Server definition
 const path = require('path');
 const packageJson = require('../package.json')
@@ -99,7 +99,8 @@ dbHandler.initiateDB().then((res)=>{
         server.listen(port);
         // Create 2nd Thread where the autoEncrypt works every X min
         /*autoEncrypt.timerEncrypt();*/
-        runOffThread().catch(err => console.error(err));
+        if(config.autoEncryptSeconds>0)
+            runOffThread().catch(err => console.error(err));
     }).catch((err)=>{
         //Some unexpected error occurred!
         console.log("Error creating default admin, server won't be ran : "+err);

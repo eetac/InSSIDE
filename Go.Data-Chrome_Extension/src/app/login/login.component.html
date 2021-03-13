@@ -18,6 +18,13 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label for="privateKey">Private Key</label>
+                    <textarea type="privateKey" cols="40" rows="5" formControlName="privateKey" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.privateKey.errors }" ></textarea>
+                    <div *ngIf="submitted && f.privateKey.errors" class="invalid-feedback">
+                        <div *ngIf="f.privateKey.errors.required">privateKey is required</div>
+                    </div>
+                </div>
+                <div class="form-group">
                     <button [disabled]="loading" class="btn btn-primary btn-block">
                         <span *ngIf="loading" class="spinner-border spinner-border-sm mr-1"></span>
                         Login
