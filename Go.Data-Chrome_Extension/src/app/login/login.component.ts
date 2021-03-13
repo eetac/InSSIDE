@@ -53,7 +53,7 @@ export class LoginComponent implements OnInit {
       },
       error=>{
         console.log(error);
-        alert(error.error.message);
+        alert(error.error.error.message);
         this.loading = false;
       }
       );

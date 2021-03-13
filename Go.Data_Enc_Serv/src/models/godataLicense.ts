@@ -6,14 +6,12 @@ const GoDataLicensesSchema: Schema = new Schema({
     hashId: { type: String, required: true}, // CIP Hash of the case
     creatorEmail:{type: String, required: true}, //To avoid problems with two cases that are equal from different  
     keys: [{
-        institutionName: { type: String, required: true},
             usedKey : { type: String, required: true},
             userGoDataId  : {type:String, required:true},
             email   : {type:String, required:true}
     }]
 });
 export interface key{
-    institutionName: string,
     usedKey : string,
     userGoDataId:string,
     email:string

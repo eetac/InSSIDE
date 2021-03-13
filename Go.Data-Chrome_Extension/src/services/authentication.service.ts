@@ -22,13 +22,14 @@ export class AuthenticationService {
       return this.currentUserSubject.value;
   }
 
-  login(username, password, privateKey:string) {
-      return this.http.post<any>(`${environment.apiUrl}/drm/login`, { username, password })
-          .pipe(map(user => {
+  login(email, password, privateKey:string) {
+      return this.http.post<any>(`${environment.apiUrl}/drm/login`, { email, password })
+          .pipe(map(data => {
             //Add the privateKey to User instance
+            console.log("id",data);
             const userCorrect:User = {
-              id:"",
-              username:username,
+              userGoDataId:data.userGoDataId,
+              email:email,
               password:password,
               privateKey:privateKey,
               token:"not-implemented"
@@ -40,10 +41,10 @@ export class AuthenticationService {
           }));
   }
 
-  register(username,password) {
-    return this.http.post<any>(`${environment.apiUrl}/drm/register`, { username, password })
+  register(email,password) {
+    return this.http.post<any>(`${environment.apiUrl}/drm/register`, { email, password})
     .pipe(map(user => {
-      user.password = password;
+        user.password = password;
         // store user details and jwt token in local storage to keep user logged in between page refreshes
         localStorage.setItem('currentUser', JSON.stringify(user));
         this.currentUserSubject.next(user);

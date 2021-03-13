@@ -14,7 +14,7 @@ const encryptCases: any = async (req: Request, res: Response)=>{
     anonymizationHelper.encryptCases(cases).then((result)=>{
         return res.status(result.statusCode).json({ message: result.message });
     }).catch((erroneousResult)=>{
-        return res.status(erroneousResult.statusCode).json({ message: erroneousResult.message });
+        return res.status(erroneousResult.statusCode).json({ error: {message:erroneousResult.message,status:erroneousResult.statusCode }});
     });
 }
 

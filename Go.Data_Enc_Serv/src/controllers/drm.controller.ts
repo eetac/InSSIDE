@@ -16,74 +16,79 @@ async function login(req: Request, res: Response) {
         if(user!=null){
             if (Bcrypt.compareSync(req.body.password, user.password)) {
                 console.log("Login Successful");
-                res.status(200).send({ message: 'Login Successful' });
+                res.status(200).send({ message: 'Login Successful',userGoDataId:user.userGoDataId });
             }
             else {
                 console.log("Login Failed, The email and password don\'t match.");
-                return res.status(400).send({ message: 'The email and password don\'t match.' });
+                return res.status(400).send({ error: {message:"The email and password don\'t match.",status:400}});
             }
         }else{
             console.log("Login Failed, Failed while trying to login, now user found");
-            res.status(400).send({ message: 'Login Failed, email/Password Incorrect or Not Found!' });
+            res.status(400).send({ error: { message: 'Login Failed, email/Password Incorrect or Not Found!' ,status:400}});
         }
     }).catch((err)=>{
         console.log("Login Failed, Failed while trying to login");
-        return res.status(500).send({ message: 'Failed while trying to login' });
+        return res.status(500).send({ error: { message: 'Failed while trying to login' ,status:500}});
     });
 }
 
 async function register(req: Request, res: Response) {
 
     const email = req.body.email;
-    const userGoDataId = req.body.userGoDataId;
-    const institutionName = req.body.institutionName;
+    const goDataPassword = req.body.password;
 
     console.log(req.body);
     let existUser = await User.findOne({ email: email });
     if (existUser) {
-        res.status(403).json({ message: "Already exist a user with this email" });
+        res.status(403).json({error: { message: "Already exist a user with this email" ,status:403}});
     }
     else {
-        // We need the managerUser to encrypt the private key of other users
-        /*let managerUser = new User(await User.findOne({ email: "admin" }));*/
-        //When we want to add new user we need to generate RSA keys
-        //We need to hash the password
-        const saltRounds = 10;
-        let password = Bcrypt.hashSync(req.body.password,saltRounds);
-        // RSA Private and Public Key in PEM format, if we need to export the key as a file ##FUTURE!
-        const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',
-            {   modulusLength: 4096,  // the length of your key in bits
-                publicKeyEncoding: {
-                    type: 'spki',       // recommended to be 'spki' by the Node.js docs
-                    format: 'pem'
-                },
-                privateKeyEncoding: {
-                    type: 'pkcs8',      // recommended to be 'pkcs8' by the Node.js docs
-                    format: 'pem',
-                    //cipher: 'aes-256-cbc',   // *optional*
-                    //passphrase: 'top secret' // *optional*
-                }
+        //TODO: CHECK ON GO DATA IF LOGIN POSSIBLE AND USER EXITS
+        goDataHelper.getGoDataUserId(email,goDataPassword).then((userGoDataId)=>{
+            // userGoDataId is found and thus user can be registered
+            //When we want to add new user we need to generate RSA keys
+            //We need to hash the password
+            const saltRounds = 10;
+            let password = Bcrypt.hashSync(goDataPassword,saltRounds);
+            // RSA Private and Public Key in PEM format, if we need to export the key as a file ##FUTURE!
+            const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',
+                {   modulusLength: 4096,  // the length of your key in bits
+                    publicKeyEncoding: {
+                        type: 'spki',       // recommended to be 'spki' by the Node.js docs
+                        format: 'pem'
+                    },
+                    privateKeyEncoding: {
+                        type: 'pkcs8',      // recommended to be 'pkcs8' by the Node.js docs
+                        format: 'pem',
+                        //cipher: 'aes-256-cbc',   // *optional*
+                        //passphrase: 'top secret' // *optional*
+                    }
+                });
+            let newUser:IUser = new User({
+                email           :   email,
+                password        :   password,
+                userGoDataId    :   userGoDataId,
+                publicKey       :   publicKey,
+                privateKey      :   privateKey
             });
-        let newUser:IUser = new User({
-            email           :   email,
-            password        :   password,
-            userGoDataId    :   userGoDataId,
-            institutionName :   institutionName,
-            publicKey       :   publicKey,
-            privateKey      :   privateKey
-        });
-        // New user will be sent to the user who just registered, on top of that we need to encrypt the private key itself
-        // with the user password, so that even on a db leak, all of the data is protected by hospital key!
-        // FUTURE--> For now no encryption, as the hospital should be able to ask for a password change!
+            console.log(newUser)
+            // New user will be sent to the user who just registered, on top of that we need to encrypt the private key itself
+            // with the user password, so that even on a db leak, all of the data is protected by hospital key!
+            // FUTURE--> For now no encryption, as the hospital should be able to ask for a password change!
 
-        newUser.save().then((data) => {
-            console.log('User added successfully');
-            newUser.password = "password-hidden";
-            res.status(201).json(newUser);
-        }).catch((err) => {
-            console.log(err)
-            res.status(500).json({ message: err });
+            newUser.save().then((data) => {
+                console.log('User added successfully');
+                newUser.password = "password-hidden";
+                res.status(201).json(newUser);
+            }).catch((err) => {
+                console.log(err)
+                res.status(500).json({error: { message: err ,status:500}});
+            })
+        }).catch((err)=>{
+            //TODO: IF DOESN'T EXIST THAN DON'T ALLOW REGISTRATION!
+            res.status(500).json( {error: { message:"Email/Password incorrect, doesn't exist on goData server" ,status:500}});
         })
+
     }
 
 }
@@ -179,7 +184,6 @@ async function dataKeyTransfer(req:Request, res: Response){
                     // Step3. Add they key to the License with other keys
                     let newKey =
                         {
-                            institutionName: targetUser.institutionName,
                             usedKey : keyEncrypted,
                             userGoDataId:targetUser.userGoDataId,
                             email:targetUser.email

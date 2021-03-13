@@ -16,7 +16,7 @@ function initiateDB() {
                 useUnifiedTopology: true,
             }
             mongoose.connect(config.DB.URI, dbOptions).then(r =>{
-                console.log('Connection w/ DB Successful!');
+                console.log('Connection w/ DRM DB Successful!');
                 resolve(true);
                 return;
             }).catch((err)=>{
@@ -39,13 +39,13 @@ function initiateDB() {
 function createAdmin():Promise<boolean>{
     return new Promise((resolve,reject )=>{
         try {
-            let query = { "username": "admin" };
+            let query = { email: config.USER };
             User.findOne(query).then((res)=>{
                 if(res==null){
                     // Admin not created in the DB
                     // Creating a new admin
-                    const saltRounds = 10;
-                    let password = bcrypt.hashSync("admin",saltRounds);
+                    const saltRounds = config.saltRounds;
+                    let password = bcrypt.hashSync(config.PASSWORD,saltRounds);
 
                     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',
                         {   modulusLength: 4096,  // the length of your key in bits
@@ -62,14 +62,14 @@ function createAdmin():Promise<boolean>{
                         });
                     let managerUser:IUser = new User({
                         email           :   config.USER,
-                        password        :   config.PASSWORD,
+                        password        :   password,
                         userGoDataId    :   config.USERGODATAID,
                         institutionName :   config.INSTITUTION,
                         publicKey       :   publicKey,
                         privateKey      :   privateKey
                     });
                     managerUser.save().then((_) => {
-                        console.log("admin created with username:admin & password:admin; Remember to change!");
+                        console.log(`Admin Account Created with email: ${config.USER}`);
                         resolve( true );return;
                     }).catch((err) => {
                         reject( new Error( err ) );
@@ -77,7 +77,7 @@ function createAdmin():Promise<boolean>{
                     });
                 }else{
                     //No need to create admin,already exits!
-                    console.log("Admin account already exists");
+                    console.log(`Admin account already exists with email:${config.USER}`);
                     resolve( true );
                     return;
                 }

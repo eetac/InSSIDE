@@ -30,10 +30,11 @@ function encryptCases(cases:any): Promise<IResult>{
             //console.log("STEP0 --> CASE: " + cases[i])
             //First we need to know who have added this case to Go.Data and generate the hash of the case
             //let creator = cases[i].createdBy;
-            let institute = cases[i].createdByUser.institutionName.split("_");
-            let creatorInstitute = institute.splice(6,institute.length-1).join('');
+            /*let institute = cases[i].createdByUser.institutionName.split("_");
+            let creatorInstitute = institute.splice(6,institute.length-1).join('');*/
+            let createdBy = await goDataHelper.getInstituteCreator(cases[i].createdBy);
 
-            console.log("STEP1 --> Institution CREATOR: " + creatorInstitute)
+            console.log("STEP1 --> Institution CREATOR: " + createdBy.creatorInstitute)
             let encryptionKey = crypto.randomFillSync(Buffer.alloc(32)).toString('base64');
             let iv = crypto.randomBytes(config.IV_LENGTH);
             console.log("STEP2 --> ENCRYPTION KEY: " + encryptionKey)
@@ -56,7 +57,7 @@ function encryptCases(cases:any): Promise<IResult>{
                             let encryptedField: String = symmetricCipher.encryptSymmetric(cases[i][sensitiveField], encryptionKey,iv);
                             console.log("Encrypted Val: "+encryptedField);
                             /*console.log(encryptedField);*/
-                            cases[i][sensitiveField] = "/ENC/" + creatorInstitute + "/" + encryptedField;
+                            cases[i][sensitiveField] = "/ENC/" + createdBy.creatorInstitute + "/" + encryptedField;
                         }
                     }else{
                         console.log(`${sensitiveField}: is null, not encrypting`);
@@ -82,7 +83,7 @@ function encryptCases(cases:any): Promise<IResult>{
                                     let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
                                     let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey, iv);
                                     /*console.log(encryptedField)*/
-                                    cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + creatorInstitute + "/" + encryptedField
+                                    cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + createdBy.creatorInstitute + "/" + encryptedField
                                 }
                             }
                         }
@@ -99,7 +100,7 @@ function encryptCases(cases:any): Promise<IResult>{
                 console.log("Entered Update Case and Insertion License");
                 let keys;
                 //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
-                User.findOne({ email: "admin" }).then((managerUser)=>{
+                User.findOne({ email: config.USER }).then((managerUser)=>{
                     /* console.log("managerUser: "+managerUser); */
                     if(managerUser!=null){
                         // Now hash the CIP, as this will provide the merge capability between same cases from different hospital
@@ -129,33 +130,33 @@ function encryptCases(cases:any): Promise<IResult>{
                             };
                             /* console.log("Case Edited: \n"+cases[i]); */
                             let keyEncrypted:string = asymmetricCipher.encryptKeyRSA(managerUser.publicKey,encryptionKey);
-                            User.findOne({ userGoDataId: cases[i].createdByUser.id }).then((caseCreatedByUser)=>{
+                            User.findOne({ userGoDataId: cases[i].createdBy }).then((caseCreatedByUser)=>{
                                 /* console.log("managerUser: "+managerUser); */
                                 if(caseCreatedByUser!=null) {
                                     let keyEncrypted2:string = asymmetricCipher.encryptKeyRSA(caseCreatedByUser.publicKey,encryptionKey);
-                                    //Hospital, if the hospital does exist in our DB we also save for it!
+                                    //Hospital, if the hospital does exist in our DB we also save for it THE LICENSE!
                                     keys = [
                                         {
-                                            institutionName: creatorInstitute,
-                                            usedKey : keyEncrypted2,
-                                            userId:cases[i].createdByUser.id,
-                                            email:cases[i].createdByUser.email
+                                            /*institutionName : creatorInstitute,*/
+                                            usedKey         : keyEncrypted2,
+                                            userGoDataId    : cases[i].createdBy,
+                                            email           : createdBy.email
                                         },
                                         {
-                                            institutionName : creatorInstitute,
-                                            usedKey : keyEncrypted,
-                                            userId  : "--none--",
-                                            email   : "admin"
+                                            /*institutionName : config.INSTITUTION,*/
+                                            usedKey         : keyEncrypted,
+                                            userGoDataId    : config.USERGODATAID,
+                                            email           : config.USER
                                         }
                                     ];
                                 }else{
                                     //Hospital, if the hospital does not exist in our DB we only save the keys of the admin
                                     keys = [
                                         {
-                                            institutionName : creatorInstitute,
-                                            usedKey : keyEncrypted,
-                                            userId  : "--none--",
-                                            email   : "admin"
+                                            /*institutionName : config.INSTITUTION,*/
+                                            usedKey         : keyEncrypted,
+                                            userGoDataId    : config.USERGODATAID,
+                                            email           : config.USER
                                         }
                                     ];
                                 }
@@ -163,7 +164,7 @@ function encryptCases(cases:any): Promise<IResult>{
                                 const newGoDataLicenseCase:IGoDataLicensesSchema = new GoDataLicenses({
                                     caseId: cases[i]['id'],
                                     hashId:DOCUMENT_HASH,
-                                    creatorEmail: creatorInstitute,
+                                    creatorEmail: createdBy.creatorInstitute,
                                     keys:keys }); //New entry in our DRM server to store the keys
                                 console.log("STEP4 --> new License created: " + newGoDataLicenseCase)
                                 newGoDataLicenseCase.save().then((data) => {

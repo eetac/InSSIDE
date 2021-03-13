@@ -1,6 +1,6 @@
 export class User {
-    id: string;
-    username: string;
+    userGoDataId: string;
+    email: string;
     password: string;
     token: string;
     privateKey:string;

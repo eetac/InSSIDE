@@ -51,7 +51,7 @@ function updateCase(body: any){
     });
 }
 
-function getInstituteCreator(idCreator: string):Promise<string>{
+function getInstituteCreator(idCreator: string):Promise<any>{
     return new Promise((resolve,reject )=> {
         //Here we search the email of the creator of the case to then save in our DB
         let id: string = idCreator;//req.params.hashCase;
@@ -61,7 +61,11 @@ function getInstituteCreator(idCreator: string):Promise<string>{
                 let user = JSON.parse(res);
                 let institute = user.institutionName.split("_");
                 let nameInstitute = institute.splice(6,institute.length-1).join('');
-                return resolve(nameInstitute);
+                let createdBy = {
+                    creatorInstitute    :   nameInstitute,
+                    email               :   user.email
+                };
+                return resolve(createdBy);
             }).catch((err:any)=>{
                 return reject(err);
             })
@@ -71,7 +75,29 @@ function getInstituteCreator(idCreator: string):Promise<string>{
     });
 }
 
+function getGoDataUserId(email:string,password:string):Promise<string>{
+    return new Promise((resolve,reject )=> {
+        // Step1. Authenticate GoData with email & password
+            const body = {
+                email: email,
+                password: password
+            }
+        const url = `${config.URL}/users/login`;
 
+        httpHelper.doPost(url, body).then((result)=>{
+            const json = JSON.parse(result);
+            if(json.error==null){
+                return resolve(json.userId);
+            }else{
+                return reject(`{"message":"User doesn't exist in go data server"}`);
+            }
+        }).catch((err)=>{
+            console.log("Error doing a post inside authentication: "+err);
+            return reject(err);
+        });
+
+    });
+}
 
 
 function auth():Promise<string>{
@@ -96,7 +122,8 @@ function auth():Promise<string>{
 
 export default {
     getCases,
-    getInstituteCreator,
     updateCase,
+    getInstituteCreator,
+    getGoDataUserId,
     getCase
 }

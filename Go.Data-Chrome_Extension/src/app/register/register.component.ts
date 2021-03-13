@@ -20,14 +20,12 @@ export class RegisterComponent implements OnInit {
     private formBuilder: FormBuilder,
     private router: Router,
     private authenticationService: AuthenticationService,
-    private initService: InitService
   ) { }
 
   ngOnInit(): void {
     this.registerForm = this.formBuilder.group({
-      username: ['', [Validators.required, Validators.email]],
+      email   : ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
-      contactInfo: ['',Validators.required]
     });
   }
 
@@ -43,18 +41,19 @@ export class RegisterComponent implements OnInit {
     }
 
     this.loading = true;
-    let registerJSON = {
-      username: this.f.username.value,
+    /* let registerJSON = {
+      email: this.f.username.value,
       password: this.f.password.value,
       contactInfo: this.f.contactInfo.value
-    }
-    this.authenticationService.register(this.f.username.value,this.f.password.value).subscribe(user=>{
+    } */
+    this.authenticationService.register(this.f.email.value,this.f.password.value).subscribe(user=>{
       alert("This is your Private Key (store it securely): "+ user.privateKey);
       //this.router.navigate(['/home'])
       this.loading = false;
     },
-    error=>{
-      alert(error.message);
+    (error)=>{
+      console.log(error)
+      alert(error.error.error.message);
       this.loading = false;
     }
     );

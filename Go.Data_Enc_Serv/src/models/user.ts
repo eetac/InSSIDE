@@ -11,10 +11,6 @@ const UserSchema: Schema = new Schema({
         type:String,
         required:true
     },
-    institutionName:{
-        type:String,
-        required:true
-    },
     userGoDataId:{
         type:String,
         required:true
@@ -35,7 +31,6 @@ export interface IUser extends Document {
     publicKey: string;
     privateKey: string;
     userGoDataId:string;
-    institutionName:string;
 }
 export default mongoose.model<IUser>('User', UserSchema,'users');
 /*
