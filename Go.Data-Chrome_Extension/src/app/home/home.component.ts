@@ -69,7 +69,7 @@ export class HomeComponent implements OnInit {
         const symmetricKey = this.decryptKeyRSA(this.authenticationService.currentUserValue.privateKey, license);
         // TODO : Decrypt the case, already contained in the message. #Later substitute with html injected
         const decryptedCase = this.decryptCaseFields(symmetricKey, data.spCase);
-        /*console.log('Decrypted Case', decryptedCase);*/
+        console.log('Decrypted Case', decryptedCase);
       },
       error => {
         console.log(error);
@@ -81,11 +81,13 @@ export class HomeComponent implements OnInit {
       alert('Error: caseId Required');
     }
   }
-  decryptCaseFields(license: string, caseEncrypted: any): any{
-    this.decryptSymmetric('MuqZ1LpKxGpll3uESZqNsQ==:ddleWxctK46u', 'IbwgP214a5crRsv7FMqOS8A8cYv7pUnyTr8yeRXG334=');
-    return 'a';
+  decryptCaseFields(symmetricKey: string, caseEncrypted: any): any{
+
+    // TODO: Decrypt all of the fields found in the caseEncrypted, decrypt and return it!
+    const fieldDecrypted = this.decryptSymmetric('MuqZ1LpKxGpll3uESZqNsQ==:ddleWxctK46u', symmetricKey);
+    return fieldDecrypted;
   }
-  decryptSymmetric(encryptData: string, ENCRYPTION_KEY: string) {
+  decryptSymmetric(encryptData: string, ENCRYPTION_KEY: string): string{
     // Get IV + encryptedText from encryptData
     // @ts-ignore
     const encryptDataArray = encryptData.split(':');
@@ -128,14 +130,13 @@ export class HomeComponent implements OnInit {
     // tslint:disable-next-line:prefer-const
 
 
-    /*const keyBinaryData = new Blob([keyBufferarrByte]);
+    /*const keyBinaryData = new Blob([keyBufferArrByte]);
     console.log(keyBinaryData);
-    const ivBinaryData = new Blob([ivBufferarrByte]);
+    const ivBinaryData = new Blob([ivBufferArrByte]);
     console.log(ivBinaryData);*/
-    this.forgeTest(keyBase64, ivBase64, encryptedBase64);
-
+    return this.forgeDecryption(keyBase64, ivBase64, encryptedBase64);
   }
-  forgeTest(keyBase64, ivBase64, encryptedBase64){
+  forgeDecryption(keyBase64, ivBase64, encryptedBase64): string{
     const keyByte = forge.util.decode64(keyBase64);
     const ivByte = forge.util.decode64(ivBase64);
     const ciphertextByte = forge.util.decode64(encryptedBase64);
@@ -170,7 +171,7 @@ export class HomeComponent implements OnInit {
     // decrypt some bytes using CBC mode
     // (other modes include: CFB, OFB, CTR, and GCM)
     const decipher = forge.cipher.createDecipher('AES-CTR', key);
-    decipher.start({iv: iv});
+    decipher.start({iv});
     decipher.update(encrypted);
     const result = decipher.finish(); // check 'result' for true/false
     // outputs decrypted hex
@@ -180,6 +181,7 @@ export class HomeComponent implements OnInit {
     console.log('plainBuffer', plainBuffer);
     const plainUtf8 = plainBuffer.toString();
     console.log('plainUtf8', plainUtf8);
+    return plainUtf8;
   }
   decryptKeyRSA(privateKeyPem: string, encryptedData: string): string{
       const privateKey = pki.privateKeyFromPem(privateKeyPem);
