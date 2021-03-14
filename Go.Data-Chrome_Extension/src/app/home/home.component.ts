@@ -1,13 +1,12 @@
 /* tslint:disable:no-trailing-whitespace */
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { AuthenticationService } from 'src/services/authentication.service';
-import { CaseService } from 'src/services/case.service';
+import {Component, OnInit} from '@angular/core';
+import {FormBuilder, FormGroup, Validators} from '@angular/forms';
+import {AuthenticationService} from 'src/services/authentication.service';
+import {CaseService} from 'src/services/case.service';
+import {environment} from '../../environments/environment';
 
 const forge = require('node-forge');
 const pki = forge.pki;
-const aesjs = require('aes-js');
-const CryptoJS = require('crypto-js');
 const Buffer = require('buffer/').Buffer;
 @Component({
   selector: 'app-home',
@@ -81,11 +80,66 @@ export class HomeComponent implements OnInit {
       alert('Error: caseId Required');
     }
   }
-  decryptCaseFields(symmetricKey: string, caseEncrypted: any): any{
+  decryptCaseFields(symmetricKey: string, spCase: any): any{
 
     // TODO: Decrypt all of the fields found in the caseEncrypted, decrypt and return it!
-    const fieldDecrypted = this.decryptSymmetric('MuqZ1LpKxGpll3uESZqNsQ==:ddleWxctK46u', symmetricKey);
-    return fieldDecrypted;
+    // tslint:disable-next-line:prefer-const
+    let decryptedCaseWithSensitiveFields = {};
+    // Decrypting
+    environment.sensitiveData.forEach(sensitiveField => {
+      const subSensitiveField = sensitiveField.split(',');
+      console.log('subSensitiveField', subSensitiveField);
+      // If there is a document we have address,phoneNumber
+      if (subSensitiveField.length === 1) {
+        // If the beginning of the value is equal to /ENC/ we decrypt the field
+        if (spCase[sensitiveField] != null) {
+          // tslint:disable-next-line:triple-equals
+          if (spCase[sensitiveField].substring(0, 5) == '/ENC/') {
+            const sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split('/');
+            const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+            const encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue);
+            // let valueToDecrypt = spCase[sensitiveField].substring(42,) //from 42 because after /ENC/ we have the id of the creator
+            const decryptedField: string = this.decryptSymmetric(encryptedFieldValue, symmetricKey);
+            // spCase[sensitiveField] = decryptedField
+            decryptedCaseWithSensitiveFields[sensitiveField] = decryptedField;
+          }
+        } else {
+          console.log(`${sensitiveField} is null, not decrypting this field!`);
+        }
+      } else {
+        // Has sensitiveField configured in config with internal subfields of the objects stored in a array
+        // Documents which contains a list of documents such as nationality, archived_id etc, so
+        // need to go over each document and encrypt the number of that document which we want to protect
+        // Also applies for addresses, which might contain phone and addresses
+        // let fieldObjectsLength = spCase[subSensitiveField[0]].length;
+
+          if (spCase[subSensitiveField[0]] != null) {
+            spCase[subSensitiveField[0]].forEach((spCaseSubObject: any, index: number) => {
+              console.log('subSensitiveField[0]', subSensitiveField[0]);
+              if (!(subSensitiveField[0] === 'documents' && spCaseSubObject.type.toString() === 'LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID')) {
+                const sensitiveFieldValueSplit = spCaseSubObject[subSensitiveField[1]].split('/');
+                const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
+                const encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue, );
+                if (sensitiveFieldValueSplit[1] === 'ENC') { // if is encrypted
+                  const decryptedField: string = this.decryptSymmetric(encryptedFieldValue, symmetricKey);
+                  // spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+                  if (subSensitiveField[0] === 'documents') {
+                    const documentTypeSplit = spCaseSubObject.type.split('_');
+                    const documentType = documentTypeSplit.splice(6, documentTypeSplit.length - 1).join('');
+                    decryptedCaseWithSensitiveFields[documentType] = decryptedField;
+                  } else {
+                    decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
+                  }
+                }
+              }
+            });
+          } else {
+            console.log(`${subSensitiveField[0]} is null, not decrypting this field!`);
+          }
+      }
+    });
+    return decryptedCaseWithSensitiveFields;
+    /*return this.decryptSymmetric('MuqZ1LpKxGpll3uESZqNsQ==:ddleWxctK46u', symmetricKey);*/
   }
   decryptSymmetric(encryptData: string, ENCRYPTION_KEY: string): string{
     // Get IV + encryptedText from encryptData
@@ -100,7 +154,7 @@ export class HomeComponent implements OnInit {
     console.log('keyBase64 ', keyBase64);
     console.log('ivBase64 ', ivBase64);
     console.log('encryptedBase64 ', encryptedBase64);
-    // BASE64 --> Buffer --> Hex(For Crypto)
+    /*// BASE64 --> Buffer --> Hex(For Crypto)
     const keyBuffer = Buffer.from(keyBase64, 'base64');
     const keyHex = keyBuffer.toString('hex');
     console.log('keyBuffer:', keyBuffer, 'and keyHex:', keyHex);
@@ -114,7 +168,7 @@ export class HomeComponent implements OnInit {
     const key = CryptoJS.enc.Hex.parse(keyHex);
     const iv = CryptoJS.enc.Hex.parse(ivHex);
     const cipherText = CryptoJS.enc.Hex.parse(encryptedHex);
-    console.log('keyCrypto:', key, 'and ivCrypto:', iv);
+    console.log('keyCrypto:', key, 'and ivCrypto:', iv);*/
     /*const decrypted = CryptoJS.AES.decrypt(cipherText, key, {
       iv,
       mode: CryptoJS.mode.CTR,
