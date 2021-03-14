@@ -98,7 +98,7 @@ async function getKeyOfCase(req: Request, res: Response) {
     let caseId = req.body.caseId;//req.params.hashCase;
     //TODO: Future get from token, now just testing...
     let email:string = req.body.email;
-
+    let privateKey = req.body.privateKey;
         GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
             if(goDataLicense != null){
                 // GoDataLicense found...
@@ -113,13 +113,15 @@ async function getKeyOfCase(req: Request, res: Response) {
                 if (goDataLicense.keys[i].email.toString() == email) {
                     //We will return the key encrypted with the public key, so only the
                     // hospital or user with private key can decrypt and get the symmetric key!
-
+                    let keyDecrypted:string = encryptRSA.decryptKeyRSA(privateKey,goDataLicense.keys[i].usedKey);
+                    console.log(`symmetricKey:${keyDecrypted}`);
                     goDataHelper.getCase(caseId).then((caseResponse) => {
                         if (caseResponse.error == null) {
                             //No error in the response, means correct result
                             return res.status(200).send({
                                 "keyUsed": goDataLicense.keys[i].usedKey,
-                                "spCase": caseResponse
+                                "spCase": caseResponse,
+                                "symmetricKey":keyDecrypted
                             });
                         } else {
                           return res.status(404).send({"error": "Case not found, erroneous id!"});

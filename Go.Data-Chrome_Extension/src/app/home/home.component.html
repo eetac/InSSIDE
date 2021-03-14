@@ -4,8 +4,8 @@
             <h5>Decryption</h5>
             <form [formGroup]="decryptForm" (ngSubmit)="decryptCase()">
                 <div class="form-group">
-                    <label for="hashId">Hash Id</label>
-                    <input type="hashId" formControlName="hashId" class="form-control" />
+                    <label for="caseId">Case Id</label>
+                    <input type="caseId" formControlName="caseId" class="form-control" />
                 </div>
                 <div class="form-group">
                     <button class="btn btn-primary">
@@ -16,10 +16,10 @@
         </div>
         <div class="col-lg-6">
             <h5>Transfer License</h5>
-            <form [formGroup]="transferForm" (ngSubmit)="shareAccesToHospitals()">
+            <form [formGroup]="transferForm" (ngSubmit)="shareAccessToHospitals()">
                 <div class="form-group">
-                    <label for="usernameToTranfer">Destination Hospital</label>
-                    <input type="usernameToTranfer" formControlName="usernameToTranfer" class="form-control" />
+                    <label for="emailToTransfer">Destination Hospital</label>
+                    <input type="emailToTransfer" formControlName="emailToTransfer" class="form-control" />
                 </div>
                 <div class="form-group">
                     <button class="btn btn-success">
@@ -35,7 +35,7 @@
         <th *ngFor="let column of headers">
             {{column}}
         </th>
-        
+
         <tr *ngFor="let propertyField of decryptedData | keyvalue">
             <td>{{propertyField.key}}</td>
             <td>{{propertyField.value}}</td>
