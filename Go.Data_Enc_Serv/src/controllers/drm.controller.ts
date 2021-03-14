@@ -113,7 +113,7 @@ async function getKeyOfCase(req: Request, res: Response) {
                 if (goDataLicense.keys[i].email.toString() == email) {
                     //We will return the key encrypted with the public key, so only the
                     // hospital or user with private key can decrypt and get the symmetric key!
-                    let keyDecrypted:string = encryptRSA.decryptKeyRSA(privateKey,goDataLicense.keys[i].usedKey);
+                    const keyDecrypted:string = encryptRSA.decryptKeyRSA(privateKey,goDataLicense.keys[i].usedKey);
                     console.log(`symmetricKey:${keyDecrypted}`);
                     goDataHelper.getCase(caseId).then((caseResponse) => {
                         if (caseResponse.error == null) {
