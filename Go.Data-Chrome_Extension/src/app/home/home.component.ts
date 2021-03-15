@@ -70,6 +70,7 @@ export class HomeComponent implements OnInit {
           // TODO : Decrypt the case, already contained in the message. #Later substitute with html injected
           const decryptedCase = this.decryptCaseFields(symmetricKey, data.spCase);
           console.log('Decrypted Case', decryptedCase);
+          this.decryptedData = decryptedCase;
         },
         error => {
           console.log(error);
