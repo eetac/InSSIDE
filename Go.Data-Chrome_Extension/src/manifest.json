@@ -1,27 +1,50 @@
 {
-    "name": "GoData Anonymization",
-    "version": "1.0",
-    "description": "GoData Anonymization extension built by EETAC",
-    "manifest_version": 2,
-    "icons": {
-        "16": "./assets/Go.Data_Logo16.ico", 
-        "48": "./assets/Go.Data_Logo48.ico", 
-        "128": "./assets/Go.Data_Logo128.ico"
-    },
-    "background":{
-        "scripts":["background.js"],
-        "persistent": true
-    },
-    "permissions":[
-        "tabs",
-        "activeTab",
-        "https://ajax.googleapis.com/",
-        "https://cdnjs.cloudflare.com/"
-    ],
-    "browser_action": {
-        "default_title": "GoData",
-        "default_icon": "./assets/Go.Data_Logo.png",
-        "default_popup": "./index.html"
-    },
-    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+  "name": "GoData Anonymization",
+  "version": "1.0",
+  "description": "GoData Anonymization extension built by EETAC",
+  "manifest_version": 2,
+  "icons": {
+      "16": "./assets/Go.Data_Logo16.ico",
+      "48": "./assets/Go.Data_Logo48.ico",
+      "128": "./assets/Go.Data_Logo128.ico"
+  },
+  "background":{
+      "scripts":["background.js"],
+      "persistent": true
+  },
+  "permissions":[
+    "http://*/cases/*/view",
+    "https://*/cases/*/view",
+    "tabs",
+    "activeTab",
+    "webNavigation",
+    "storage",
+    "https://ajax.googleapis.com/",
+    "https://cdnjs.cloudflare.com/"
+  ],
+  "browser_action": {
+      "default_title": "GoData",
+      "default_icon": "./assets/Go.Data_Logo.png",
+      "default_popup": "./index.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/cases/*/view",
+        "https://*/cases/*/view"
+      ],
+      "css": [
+        "./assets/main.css"
+      ],
+      "js": [
+        "./assets/contentscript.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": true
+    }
+  ],
+    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+    "web_accessible_resources": [
+
+    ]
 }

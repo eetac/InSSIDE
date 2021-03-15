@@ -1,16 +1,9 @@
-/* chrome.runtime.onInstalled.addListener(() => {
-    console.log('onInstalled...');
-    // create alarm after extension is installed / upgraded
-    chrome.alarms.create('refresh', { periodInMinutes: 3 });
-  }); */
-  
-  /* chrome.alarms.onAlarm.addListener((alarm) => {
-    console.log(alarm.name); // refresh
-    helloWorld();
-  }); */
-  /* chrome.browserAction.onClicked.addListener(function () {
-    chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
-  }); */
-  /* function helloWorld() {
-    console.log("Hello, world!");
-  } */
+chrome.runtime.onInstalled.addListener(() => {
+  /*chrome.storage.sync.set({ color: '#3aa757' });*/
+
+  /*chrome.webNavigation.onCompleted.addListener(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([{ id }]) => {
+      chrome.pageAction.show(id);
+    });
+  }, { url: [{ urlMatches: 'http://localhost:8000/cases/edf15df1-b89d-474c-b504-c7051a72d54b/view' }] });*/
+});

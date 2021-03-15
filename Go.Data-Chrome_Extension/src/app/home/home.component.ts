@@ -60,20 +60,21 @@ export class HomeComponent implements OnInit {
 
       const email = this.authenticationService.currentUserValue.email;
       // tslint:disable-next-line:max-line-length
-      this.caseService.getLicense(email, this.fdecryptForm.caseId.value, this.authenticationService.currentUserValue.privateKey).subscribe(data => {
-        // FROM LICENSE GET THE SYMMETRIC Key
-        console.log(data);
-        const license = data.keyUsed;
-        console.log(`license:${license}`);
-        const symmetricKey = this.decryptKeyRSA(this.authenticationService.currentUserValue.privateKey, license);
-        // TODO : Decrypt the case, already contained in the message. #Later substitute with html injected
-        const decryptedCase = this.decryptCaseFields(symmetricKey, data.spCase);
-        console.log('Decrypted Case', decryptedCase);
-      },
-      error => {
-        console.log(error);
-        alert(error.error.error.message);
-      }
+      this.caseService.getLicense(email, this.fdecryptForm.caseId.value, this.authenticationService.currentUserValue.privateKey).subscribe(
+        data => {
+          // FROM LICENSE GET THE SYMMETRIC Key
+          console.log(data);
+          const license = data.keyUsed;
+          console.log(`license:${license}`);
+          const symmetricKey = this.decryptKeyRSA(this.authenticationService.currentUserValue.privateKey, license);
+          // TODO : Decrypt the case, already contained in the message. #Later substitute with html injected
+          const decryptedCase = this.decryptCaseFields(symmetricKey, data.spCase);
+          console.log('Decrypted Case', decryptedCase);
+        },
+        error => {
+          console.log(error);
+          alert(error.error.error.message);
+        }
       );
     }
     else {

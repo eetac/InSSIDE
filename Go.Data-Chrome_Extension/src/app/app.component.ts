@@ -15,6 +15,15 @@ export class AppComponent {
     private authenticationService: AuthenticationService
     ) {
     this.userStatus();
+    // @ts-ignore
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      console.log('tabs', tabs);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: 'document.body.innerHTML += "<p>Testing Injection...</p>";' }
+      );
+    });
   }
 
   logout(){
