@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthenticationService } from 'src/services/authentication.service';
 import { Router } from '@angular/router';
+import {environment} from '../../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -23,9 +24,9 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.loginForm = this.formBuilder.group({
-      username: ['', [Validators.required]],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required]],
-      privateKey:['',[Validators.required]]
+      privateKey: ['', [Validators.required]]
     });
   }
   // Returns directly the controls of the form
@@ -40,35 +41,28 @@ export class LoginComponent implements OnInit {
       }
 
       this.loading = true;
-      /* let loginJSON = {
-        username: this.f.username.value,
-        password: this.f.password.value
-      } */
-      const username = this.f.username.value;
-      const password = this.f.password.value;
-      const privateKey = this.f.privateKey.value;
-      this.authenticationService.login(this.f.username.value,this.f.password.value,this.f.privateKey.value).subscribe(user=>{
-        this.router.navigate(['/home'])
+      this.authenticationService.login(this.f.email.value, this.f.password.value, this.f.privateKey.value).subscribe(() => {
+        this.router.navigate(['/home']);
         this.loading = false;
       },
-      error=>{
+      error => {
         console.log(error);
-        alert(error.error.error.message);
+        environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
         this.loading = false;
       }
       );
-      /* this.initService.login(loginJSON).subscribe(
-         data => {
-          console.log(data.status);
-           console.log(data);
-          let storedJSON = JSON.stringify(loginJSON);
-          localStorage.setItem('user',storedJSON);
-          this.router.navigate(['/home']);
-        },
-        error => {
-            alert(error.message);
-            this.loading = false;
-        }); */
+  }
+  alertChromeTab(message: string){
+    // @ts-ignore
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+      const url = tabs[0].url;
+      console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `alert("${message}");` });
+      // use `url` here inside the callback because it's asynchronous!
+    } );
   }
 
 }

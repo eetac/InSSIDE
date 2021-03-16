@@ -1,49 +1,38 @@
-<div class="container" *ngIf="userActive">
-  <h5>Decryption Table</h5>
-  <hr>
-  <table id="decryptedCase">
-    <th *ngFor="let column of headers">
-      {{column}}
-    </th>
+<table id="decryptedCaseTable" *ngIf="decryptedDataAvailable" style="width: 96%;font-size:95%;">
+  <th *ngFor="let column of headers" style="width: 100%;font-size:95%;">
+    {{column}}
+  </th>
+  <tr *ngFor="let propertyField of decryptedData | keyvalue" style="width: 100%;font-size:95%;">
+    <td >{{propertyField.key}}</td>
+    <td>{{propertyField.value}}</td>
+  </tr>
+</table>
+<form [formGroup]="decryptForm" (ngSubmit)="decryptCase()" style="margin-top: 4px;">
+    <div class="form-group">
+        <!--<label for="caseId">Case Id</label>-->
+        <input placeholder="Case Id" type="text" formControlName="caseId" class="form-control" />
+    </div>
+    <div class="form-group">
+        <button style="background-color:#4DB0A0;" class="btn btn-primary">
+            Decrypt
+        </button>
+    </div>
+</form>
 
-    <tr *ngFor="let propertyField of decryptedData | keyvalue">
-      <td>{{propertyField.key}}</td>
-      <td>{{propertyField.value}}</td>
-    </tr>
-  </table>
-  <div class="row">
-      <div class="col-lg-6">
-          <h5>Decryption</h5>
-          <form [formGroup]="decryptForm" (ngSubmit)="decryptCase()">
-              <div class="form-group">
-                  <label for="caseId">Case Id</label>
-                  <input type="caseId" formControlName="caseId" class="form-control" />
-              </div>
-              <div class="form-group">
-                  <button class="btn btn-primary">
-                      Decrypt
-                  </button>
-              </div>
-          </form>
-      </div>
-      <div class="col-lg-6">
-          <h5>Transfer License</h5>
-          <form [formGroup]="transferForm" (ngSubmit)="shareAccessToHospitals()">
-              <div class="form-group">
-                  <label for="emailToTransfer">Destination Hospital</label>
-                  <input type="emailToTransfer" formControlName="emailToTransfer" class="form-control" />
-              </div>
-              <div class="form-group">
-                  <button class="btn btn-success">
-                      Transfer License
-                  </button>
-              </div>
-          </form>
-      </div>
+<form [formGroup]="transferForm" (ngSubmit)="shareAccessToHospitals()">
+    <div class="form-group">
+        <!--<label for="emailToTransfer">Destination Hospital</label>-->
+        <input placeholder="Target Email" type="text" formControlName="emailToTransfer" class="form-control"/>
+    </div>
+    <div class="form-group">
+        <button class="btn btn-success" style="background-color:#5373AF;">
+            Transfer License
+        </button>
+    </div>
+</form>
+<div class="container" *ngIf="!userActive">
+  <div>
+    <h5>You need to be logged in first, before coming to home!</h5>
   </div>
 </div>
-    <div class="container" *ngIf="!userActive">
-        <div>
-            <h5>You need to be login first, before coming to home!</h5>
-        </div>
-    </div>
+

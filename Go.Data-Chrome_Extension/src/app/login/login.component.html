@@ -1,37 +1,33 @@
-<div class="container-lg">
-    <div class="row ex1">
-        <h2>Login</h2>
-        <div class="col-lg-12">
-            <form [formGroup]="loginForm" (ngSubmit)="login()">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" formControlName="username" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.username.errors }" />
-                    <div *ngIf="submitted && f.username.errors" class="invalid-feedback">
-                        <div *ngIf="f.username.errors.required">Username is required</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" formControlName="password" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.password.errors }" />
-                    <div *ngIf="submitted && f.password.errors" class="invalid-feedback">
-                        <div *ngIf="f.password.errors.required">Password is required</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="privateKey">Private Key</label>
-                    <textarea type="privateKey" cols="40" rows="5" formControlName="privateKey" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.privateKey.errors }" ></textarea>
-                    <div *ngIf="submitted && f.privateKey.errors" class="invalid-feedback">
-                        <div *ngIf="f.privateKey.errors.required">privateKey is required</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <button [disabled]="loading" class="btn btn-primary btn-block">
-                        <span *ngIf="loading" class="spinner-border spinner-border-sm mr-1"></span>
-                        Login
-                    </button>
-                    <a routerLink="/register" class="btn btn-link ">Register</a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<h2>Login</h2>
+<form [formGroup]="loginForm" (ngSubmit)="login()">
+  <div class="form-group">
+      <label for="email">Email</label>
+      <input type="text" formControlName="email" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.email.errors }" />
+      <div *ngIf="submitted && f.email.errors" class="invalid-feedback">
+          <div *ngIf="f.email.errors.required">Email is required</div>
+        <div *ngIf="f.email.errors.email">Email is required to be an email</div>
+      </div>
+  </div>
+  <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" formControlName="password" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.password.errors }" />
+      <div *ngIf="submitted && f.password.errors" class="invalid-feedback">
+          <div *ngIf="f.password.errors.required">Password is required</div>
+      </div>
+  </div>
+  <div class="form-group">
+      <label for="privateKey">Private Key</label>
+      <textarea type="privateKey" cols="40" rows="5" formControlName="privateKey" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.privateKey.errors }" ></textarea>
+      <div *ngIf="submitted && f.privateKey.errors" class="invalid-feedback">
+          <div *ngIf="f.privateKey.errors.required">privateKey is required</div>
+      </div>
+  </div>
+  <div class="form-group">
+      <button [disabled]="loading" class="btn btn-primary btn-block">
+          <span *ngIf="loading" class="spinner-border spinner-border-sm mr-1"></span>
+          Login
+      </button>
+      <a routerLink="/register" class="btn btn-link ">Register</a>
+  </div>
+</form>
+

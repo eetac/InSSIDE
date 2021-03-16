@@ -3,11 +3,9 @@ import {Component, OnInit} from '@angular/core';
 import {FormBuilder, FormGroup, Validators} from '@angular/forms';
 import {AuthenticationService} from 'src/services/authentication.service';
 import {CaseService} from 'src/services/case.service';
+import {CryptographyService} from 'src/services/cryptography.service';
 import {environment} from '../../environments/environment';
 
-const forge = require('node-forge');
-const pki = forge.pki;
-const Buffer = require('buffer/').Buffer;
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -15,27 +13,33 @@ const Buffer = require('buffer/').Buffer;
 })
 export class HomeComponent implements OnInit {
   // Table
-  headers = ['Property', 'Sensitive Data'];
+  headers = ['Personal', 'Information'];
   decryptedData = {};
-
-  hidePrivKey: boolean;
-  /* public sensitiveData = ["firstName","middleName","lastName","addresses,phoneNumber"] */
   userActive: boolean;
+  decryptedDataAvailable = false;
   decryptForm: FormGroup;
   transferForm: FormGroup;
+
   constructor(
     private formBuilder: FormBuilder,
     private authenticationService: AuthenticationService,
-    private caseService: CaseService
-  ) { }
+    private caseService: CaseService,
+    private cryptographyService: CryptographyService
+  ) {
+    console.log('ran');
+    if (environment.isExtensionBuild) {
+      this.chromeDecryptAndInject();
+    }
+  }
 
   ngOnInit(): void {
     this.userStatus();
+    this.decryptedDataAvailable = false;
     this.decryptForm = this.formBuilder.group({
-      caseId: ['', [Validators.required]]
+      caseId: ['', []]
     });
     this.transferForm = this.formBuilder.group({
-      emailToTransfer: ['', [Validators.required]]
+      emailToTransfer: ['', [Validators.required, Validators.email]]
     });
   }
 
@@ -47,38 +51,83 @@ export class HomeComponent implements OnInit {
     const userData = this.authenticationService.currentUserValue;
     this.userActive = userData != null;
   }
-  copyToClipboard() {
 
-  }
-  decryptCase() {
+  decryptCase(){
     if (this.fdecryptForm.caseId.value !== '' ) {
-
-      const email = this.authenticationService.currentUserValue.email;
-      // tslint:disable-next-line:max-line-length
-      this.caseService.getLicense(email, this.fdecryptForm.caseId.value, this.authenticationService.currentUserValue.privateKey).subscribe(
-        data => {
-          // FROM LICENSE GET THE SYMMETRIC Key
-          console.log(data);
-          const license = data.keyUsed;
-          console.log(`license:${license}`);
-          const symmetricKey = this.decryptKeyRSA(this.authenticationService.currentUserValue.privateKey, license);
-          // TODO : Decrypt the case, already contained in the message. #Later substitute with html injected
-          const decryptedCase = this.decryptCaseFields(symmetricKey, data.spCase);
-          console.log('Decrypted Case', decryptedCase);
-          this.decryptedData = decryptedCase;
-          this.injectValues(decryptedCase);
-        },
-        error => {
-          console.log(error);
-          alert(error.error.error.message);
-        }
-      );
-    }
-    else {
-      alert('Error: caseId Required');
+      this.getCaseAndDecrypt(this.fdecryptForm.caseId.value);
+    }else if (environment.isExtensionBuild) {
+      this.chromeDecryptAndInject();
+    }else{
+      environment.isExtensionBuild ? this.alertChromeTab('caseId Required') : alert('CaseId Required');
     }
   }
-  getUrlFromTab(){
+  chromeDecryptAndInject(){
+    // @ts-ignore
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      console.log('tabs', tabs);
+      const url = tabs[0].url;
+      console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `console.log("URL: ", "${url}");` }
+      );
+      // Separate the string and obtain the caseId
+      const UrlSplit = url.split('/');
+      if (UrlSplit.length === 6){
+        if (UrlSplit[5] === 'view'){
+          const caseIdUrl = UrlSplit[4].toString();
+          if (caseIdUrl){
+            this.fdecryptForm.caseId.setValue(caseIdUrl);
+            this.getCaseAndDecrypt(caseIdUrl);
+          }else{
+
+            environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Case Page') : alert('Error: Not GoData Case Page');
+
+          }
+        }else{
+          environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Case Page') : alert('Error: Not GoData Case Page');
+        }
+      }else{
+        environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Case Page') : alert('Error: Not GoData Case Page');
+      }
+    } );
+  }
+  getCaseAndDecrypt(caseId) {
+    const email = this.authenticationService.currentUserValue.email;
+    const privateKey = this.authenticationService.currentUserValue.privateKey;
+      // tslint:disable-next-line:max-line-length
+    this.caseService.getLicense(email, caseId).subscribe(
+      data => {
+        // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
+        console.log(data);
+        const encryptedLicense = data.keyUsed;
+        console.log(`Encrypted license: ${encryptedLicense}`);
+        let decryptedLicense;
+        try{
+          decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
+          // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
+          try{
+            const decryptedCase = this.decryptCaseFields(decryptedLicense, data.spCase);
+            console.log('Decrypted Case', decryptedCase);
+            this.decryptedData = decryptedCase;
+            this.decryptedDataAvailable = true;
+            this.injectValues(decryptedCase);
+          }catch (e) {
+            environment.isExtensionBuild ? this.alertChromeTab('Error: License/Case are bad.') : alert('Error: License/Case are bad.');
+          }
+        }catch (e) {
+          environment.isExtensionBuild ? this.alertChromeTab('Error: Private Key Incorrect and/or format.') : alert('Error: Private Key Incorrect and/or format.');
+          this.authenticationService.logout();
+        }
+      },
+      error => {
+        console.log(error);
+        environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
+      }
+    );
+  }
+  alertChromeTab(message: string){
     // @ts-ignore
     chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
       const url = tabs[0].url;
@@ -86,11 +135,11 @@ export class HomeComponent implements OnInit {
       // @ts-ignore
       chrome.tabs.executeScript(
         tabs[0].id,
-        { code: `Tab Url: "${url}";` }
-      );
+        { code: `alert("${message}");` });
       // use `url` here inside the callback because it's asynchronous!
-    });
+    } );
   }
+
   injectValues(decryptedFields){
     // @ts-ignore
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
@@ -132,9 +181,40 @@ export class HomeComponent implements OnInit {
         tabs[0].id,
         { code: `document.querySelector("#mat-input-45").value="${decryptedFields.phoneNumber}";` }
       );
-
+      // TWO VERSIONS OF ANGULAR ARE CREATED FOR GO DATA WEBPAGE, THUS TWO MODES OF JQUERY REQUIRED
+      // @ts-ignore First Name
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-76").value="${decryptedFields.firstName}";` }
+      );
+      // @ts-ignore Middle Name
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-77").value="${decryptedFields.middleName}";` }
+      );
+      // @ts-ignore Last Name
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-78").value="${decryptedFields.lastName}";` }
+      );
+      // @ts-ignore CIP
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-110").value="${decryptedFields.CIP}";` }
+      );
+      // @ts-ignore National Id Card
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-111")="${decryptedFields.NATIONALIDCARD}";` }
+      );
+      // @ts-ignore Phone Number
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-120")="${decryptedFields.phoneNumber}";` }
+      );
     } );
   }
+
   decryptCaseFields(symmetricKey: string, spCase: any): any{
 
     // TODO: Decrypt all of the fields found in the caseEncrypted, decrypt and return it!
@@ -154,9 +234,9 @@ export class HomeComponent implements OnInit {
             const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
             const encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue);
             // let valueToDecrypt = spCase[sensitiveField].substring(42,) //from 42 because after /ENC/ we have the id of the creator
-            const decryptedField: string = this.decryptSymmetric(encryptedFieldValue, symmetricKey);
             // spCase[sensitiveField] = decryptedField
-            decryptedCaseWithSensitiveFields[sensitiveField] = decryptedField;
+            // tslint:disable-next-line:max-line-length
+            decryptedCaseWithSensitiveFields[sensitiveField] = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
           }
         } else {
           console.log(`${sensitiveField} is null, not decrypting this field!`);
@@ -176,7 +256,7 @@ export class HomeComponent implements OnInit {
                 const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
                 const encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue, );
                 if (sensitiveFieldValueSplit[1] === 'ENC') { // if is encrypted
-                  const decryptedField: string = this.decryptSymmetric(encryptedFieldValue, symmetricKey);
+                  const decryptedField: string = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
                   // spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
                   if (subSensitiveField[0] === 'documents') {
                     const documentTypeSplit = spCaseSubObject.type.split('_');
@@ -194,138 +274,28 @@ export class HomeComponent implements OnInit {
       }
     });
     return decryptedCaseWithSensitiveFields;
-    /*return this.decryptSymmetric('MuqZ1LpKxGpll3uESZqNsQ==:ddleWxctK46u', symmetricKey);*/
-  }
-  decryptSymmetric(encryptData: string, ENCRYPTION_KEY: string): string{
-    // Get IV + encryptedText from encryptData
-    // @ts-ignore
-    const encryptDataArray = encryptData.split(':');
-    console.log('encryptDataArray ', encryptDataArray);
-    /*const iv = Buffer.from(textParts[0], 'base64');
-    console.log('iv', iv);*/
-    const ivBase64 = encryptDataArray.splice(0, 1).toString();
-    const encryptedBase64 = encryptDataArray.join(':');
-    const keyBase64 = ENCRYPTION_KEY;
-    console.log('keyBase64 ', keyBase64);
-    console.log('ivBase64 ', ivBase64);
-    console.log('encryptedBase64 ', encryptedBase64);
-    /*// BASE64 --> Buffer --> Hex(For Crypto)
-    const keyBuffer = Buffer.from(keyBase64, 'base64');
-    const keyHex = keyBuffer.toString('hex');
-    console.log('keyBuffer:', keyBuffer, 'and keyHex:', keyHex);
-    const ivBuffer = Buffer.from(ivBase64, 'base64');
-    const ivHex = ivBuffer.toString('hex');
-    console.log('ivBuffer:', ivBuffer, 'and ivHex:', ivHex);
-    const encryptedBuffer = Buffer.from(encryptedBase64, 'base64');
-    const encryptedHex = encryptedBuffer.toString('hex');
-    console.log('encryptedBuffer:', encryptedBuffer, 'and encryptedHex:', encryptedHex);
-    // CRYPTO-JS
-    const key = CryptoJS.enc.Hex.parse(keyHex);
-    const iv = CryptoJS.enc.Hex.parse(ivHex);
-    const cipherText = CryptoJS.enc.Hex.parse(encryptedHex);
-    console.log('keyCrypto:', key, 'and ivCrypto:', iv);*/
-    /*const decrypted = CryptoJS.AES.decrypt(cipherText, key, {
-      iv,
-      mode: CryptoJS.mode.CTR,
-      format: CryptoJS.format.Hex
-    }).toString(CryptoJS.enc.Utf8);
-    console.log('decrypted', decrypted);
-    // CRYPTO-JS Open Stream
-    const aesDecryptor = CryptoJS.algo.AES.createDecryptor(key, { iv: iv });
-    const plaintextPart = aesDecryptor.process(cipherText);
-    const plaintextPart5 = aesDecryptor.finalize();
-    console.log('plainText', plaintextPart);*/
-    // Node-Forge
-    // tslint:disable-next-line:prefer-const
-
-
-    /*const keyBinaryData = new Blob([keyBufferArrByte]);
-    console.log(keyBinaryData);
-    const ivBinaryData = new Blob([ivBufferArrByte]);
-    console.log(ivBinaryData);*/
-    return this.forgeDecryption(keyBase64, ivBase64, encryptedBase64);
-  }
-  forgeDecryption(keyBase64, ivBase64, encryptedBase64): string{
-    const keyByte = forge.util.decode64(keyBase64);
-    const ivByte = forge.util.decode64(ivBase64);
-    const ciphertextByte = forge.util.decode64(encryptedBase64);
-    const encrypted = forge.util.createBuffer(ciphertextByte);
-    // generate a random key and IV
-    // Note: a key size of 16 bytes will use AES-128, 24 => AES-192, 32 => AES-256
-    const key =  keyByte;
-    const iv =  ivByte;
-    console.log('keyByte', keyByte);
-    console.log('ivByte', ivByte);
-    /*const key = forge.random.getBytesSync(32);
-    const iv =  forge.random.getBytesSync(16);*/
-    console.log('forgekey', key);
-    console.log('forgeiv', iv);
-    /* alternatively, generate a password-based 16-byte key
-    var salt = forge.random.getBytesSync(128);
-    var key = forge.pkcs5.pbkdf2('password', salt, numIterations, 16);
-    */
-    /*const plainText = 'plaintext';
-    // encrypt some bytes using CBC mode
-    // (other modes include: ECB, CFB, OFB, CTR, and GCM)
-    // Note: CBC and ECB modes use PKCS#7 padding as default
-    const cipher = forge.cipher.createCipher('AES-CTR', key);
-    cipher.start({iv: iv});
-    cipher.update(forge.util.createBuffer(plainText));
-    cipher.finish();
-    const encrypted = cipher.output;
-    console.log('forgeEncrypted', encrypted);
-    // outputs encrypted hex
-    console.log('forgeEncryptedHex', encrypted.toHex());*/
-
-    // decrypt some bytes using CBC mode
-    // (other modes include: CFB, OFB, CTR, and GCM)
-    const decipher = forge.cipher.createDecipher('AES-CTR', key);
-    decipher.start({iv});
-    decipher.update(encrypted);
-    const result = decipher.finish(); // check 'result' for true/false
-    // outputs decrypted hex
-    const plainHex = decipher.output.toHex();
-    console.log('plainHex', plainHex);
-    const plainBuffer = Buffer.from(plainHex, 'hex');
-    console.log('plainBuffer', plainBuffer);
-    const plainUtf8 = plainBuffer.toString();
-    console.log('plainUtf8', plainUtf8);
-    return plainUtf8;
-  }
-  decryptKeyRSA(privateKeyPem: string, encryptedData: string): string{
-      const privateKey = pki.privateKeyFromPem(privateKeyPem);
-      console.log(`Private Key Pem Format: `, privateKeyPem);
-      console.log('Private Key: ', privateKey);
-      // decrypt data with a private key using RSAES-OAEP padding/SHA-256 verification hash
-      // @ts-ignore
-      const decrypted = privateKey.decrypt(new Buffer(encryptedData, 'base64'), 'RSA-OAEP', {
-        md: forge.md.sha256.create()
-      });
-      console.log('Symmetric License Key', decrypted);
-      return decrypted;
   }
 
   shareAccessToHospitals(){
     if ((this.fdecryptForm.caseId.value !== '') && (this.ftransferForm.emailToTransfer.value !== '')) {
-      const email = JSON.parse(localStorage.getItem('user')).email;
-      console.log('email: ' + email + ' emailToTransfer: ' + this.ftransferForm.emailToTransfer.value);
-      const transferPermissionJSON = {
-        email,
-        hashId: this.fdecryptForm.caseId.value,
-        emailToTransfer: this.ftransferForm.emailToTransfer.value
-      };
-      /* this.initService.transferKey(transferPermissionJSON).subscribe(
+
+        const email = this.authenticationService.currentUserValue.email;
+        const caseId = this.fdecryptForm.caseId.value;
+        const emailToTransfer = this.ftransferForm.emailToTransfer.value;
+        this.caseService.transferLicense(email, caseId, emailToTransfer).subscribe(
         data => {
-          console.log('RECEIVED');
-          const res = JSON.stringify(data);
-          alert('Case license transfer sucessfull!');
-       },
-       error => {
-           alert(error.message);
-       }); */
+          // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
+          console.log(data);
+          environment.isExtensionBuild ? this.alertChromeTab('Transfer Successful') : alert('Transfer Successful');
+        },
+        error => {
+          console.log(error);
+          environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
+        }
+      );
     }
     else {
-      alert('Error: caseId and Destination Hospital Required');
+      environment.isExtensionBuild ? this.alertChromeTab('Error: caseId and Destination Hospital Require') : alert('Error: caseId and Destination Hospital Require');
     }
   }
 }

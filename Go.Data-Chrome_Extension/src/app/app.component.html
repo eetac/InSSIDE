@@ -1,24 +1,8 @@
-<!-- nav -->
-<nav class="navbar navbar-expand-sm justify-content-center bg-primary navbar-dark" *ngIf="userActive">
-  <div class="navbar-nav">
-      <a class="nav-item nav-link" routerLink="/home">Home</a>
-      <a class="nav-item nav-link" (click)="logout()">Logout</a>
-  </div>
+<nav class="navbar navbar-expand-sm navbar-custom" style="background-color: #4DB0A0;">
+      <a class="nav-item nav-link navbar-brand mb-0 h1" style="color: #FFFFFF; font-weight:bold;" *ngIf="userActive" routerLink="/home">Home</a>
+      <a class="nav-item nav-link navbar-brand mb-0 h1" style="color: #FFFFFF; font-weight:bold;" *ngIf="userActive" (click)="logout()">Logout</a>
+      <a class="nav-item nav-link navbar-brand mb-0 h1" style="color: #FFFFFF; font-weight:bold;" routerLink="/login" *ngIf="!userActive" >Login</a>
 </nav>
-<nav class="navbar navbar-expand-sm justify-content-center bg-primary navbar-dark" *ngIf="!userActive">
-  <div class="navbar-nav">
-      <a class="nav-item nav-link" routerLink="/login">Login</a>
-  </div>
-</nav>
-
-
-<!-- main content container -->
-<div class="jumbotron">
-  <div class="container">
-      <div class="row">
-          <div class="col-sm-8 offset-sm-2">
-              <router-outlet></router-outlet>
-          </div>
-      </div>
-  </div>
+<div class="container offset-sm-2" style="width:226px;">
+    <router-outlet></router-outlet>
 </div>

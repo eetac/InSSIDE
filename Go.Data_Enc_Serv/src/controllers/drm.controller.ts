@@ -1,3 +1,4 @@
+import { key } from './../models/godataLicense';
 import { Request, Response} from 'express';
 import goDataHelper from "../helpers/goDataHelper";
 import User, {IUser} from '../models/user';//We send a message to the client
@@ -5,6 +6,7 @@ import { default as encryptRSA } from '../helpers/cipherRSA';
 import GoDataLicenses from "../models/godataLicense";
 const Bcrypt = require('bcrypt');
 const crypto = require("crypto");
+const config = require('../configurations/config');
 
 async function login(req: Request, res: Response) {
 
@@ -98,7 +100,6 @@ async function getKeyOfCase(req: Request, res: Response) {
     let caseId = req.body.caseId;//req.params.hashCase;
     //TODO: Future get from token, now just testing...
     let email:string = req.body.email;
-    let privateKey = req.body.privateKey;
         GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
             if(goDataLicense != null){
                 // GoDataLicense found...
@@ -113,15 +114,12 @@ async function getKeyOfCase(req: Request, res: Response) {
                 if (goDataLicense.keys[i].email.toString() == email) {
                     //We will return the key encrypted with the public key, so only the
                     // hospital or user with private key can decrypt and get the symmetric key!
-                    const keyDecrypted:string = encryptRSA.decryptKeyRSA(privateKey,goDataLicense.keys[i].usedKey);
-                    console.log(`symmetricKey:${keyDecrypted}`);
                     goDataHelper.getCase(caseId).then((caseResponse) => {
                         if (caseResponse.error == null) {
                             //No error in the response, means correct result
                             return res.status(200).send({
                                 "keyUsed": goDataLicense.keys[i].usedKey,
-                                "spCase": caseResponse,
-                                "symmetricKey":keyDecrypted
+                                "spCase": caseResponse
                             });
                         } else {
                           return res.status(404).send({"error": "Case not found, erroneous id!"});
@@ -151,63 +149,63 @@ async function dataKeyTransfer(req:Request, res: Response){
     let email = req.body.email; // TODO: Future retrieve from token!
     let emailToTransfer = req.body.emailToTransfer; // Directly in the json as nothing personal
     console.log("Transfer Solicited for "+emailToTransfer);
-    let hashId = req.body.hashId;
+    let caseId = req.body.caseId;
     //We need both the private key of the existent user and the private key of the transfer user
     // First we find that the email exists
-    let existentUser = await User.findOne({ email: email});
-    if(existentUser==null){
-        return res.status(400).send({"error": "Cannot transfer,User doesn't exist"});
+    let managerUser = await User.findOne({ email: config.USER});
+    if(managerUser==null){
+        return res.status(500).send({"error": "Cannot transfer, server error"});
     }
     let targetUser =  await User.findOne({ email: emailToTransfer});
+    //User exists
+    if(targetUser==null){
+        return res.status(400).send({"error": "Cannot transfer,Target User doesn't exist"});
+    }
     // Contains the symmetric key!
-    GoDataLicenses.findOne({ hashId: hashId}).then((licenseToTransfer)=>{
+    GoDataLicenses.findOne({ caseId: caseId}).then((licenseToTransfer)=>{
         if(licenseToTransfer!=null){
-           /* let JsonLicenseToTransfer = licenseToTransfer;
-            console.log(JsonLicenseToTransfer);*/
             // GoDataLicense found...
             let i = 0;
-            // Find where the hospitalName is equal to email, inside the licenses...
-            while (licenseToTransfer.keys[i].email.toString() != email) {
+            // Find where the hospitalName is equal to manager, inside the licenses...
+            // As we don't have access to hospital private key, the only way to transfer is using the private key
+            // of the manager/administrator
+            while (licenseToTransfer.keys[i].email.toString() != config.USER) {
                 i = i + 1;
                 if(licenseToTransfer.keys.length==i){
-                    return res.status(404).send({"error": "Don't have permission for the case"});
+                    return res.status(500).send({"error": "Server error, please contact administrator"});
                 }
             }
-            if (licenseToTransfer.keys[i].email.toString() == email) {
-                //User exists
-                if(targetUser!=null){
-                    //Target user actually exists
-                    // Step1. Decrypt the symmetric key from the License
-                    let encryptedKey:string = licenseToTransfer.keys[i].usedKey;
-                    // @ts-ignore
-                    let keyDecrypted:string = encryptRSA.decryptKeyRSA(existentUser.privateKey,encryptedKey);
-                    // Step2. Encrypt the symmetric key from the public key of transferUser
-                    let keyEncrypted:string = encryptRSA.encryptKeyRSA(targetUser.publicKey,keyDecrypted);
-                    // Step3. Add they key to the License with other keys
-                    let newKey =
-                        {
-                            usedKey : keyEncrypted,
-                            userGoDataId:targetUser.userGoDataId,
-                            email:targetUser.email
-                        };
-                    const queryUpdate = { _id: licenseToTransfer._id };
-                    // TODO: FIX THE PRIVATE KEY USAGE IN LICENSE TRANSFER!
-                    GoDataLicenses.updateOne( queryUpdate, { "$push": { keys: newKey } }).then( (updateRes)=> {
-                        //console.debug( "Chat added to user:  ", updateRes );
-                   // Step4. Notify user, that the transfer was successfull
-                        return res.status(201).send({"message": "Transfer completed successfully"});
-                    } ).catch( ( err ) =>
+            
+            //User exists
+            if(targetUser!=null){
+                //Target user actually exists
+                // Step1. Decrypt the symmetric key from the License
+                let encryptedKey:string = licenseToTransfer.keys[i].usedKey;
+                // @ts-ignore
+                let keyDecrypted:string = encryptRSA.decryptKeyRSA(managerUser.privateKey,encryptedKey);
+                // Step2. Encrypt the symmetric key from the public key of transferUser
+                let keyEncrypted:string = encryptRSA.encryptKeyRSA(targetUser.publicKey,keyDecrypted);
+                // Step3. Add they key to the License with other keys
+                let newKey =
                     {
-                        return res.status(400).send({"error": "No update completed, unknown error while updating"});
-                    });
-                }else{
-                    return res.status(400).send({"error": "Cannot transfer,TargetUser doesn't exist"});
-                }
+                        usedKey : keyEncrypted,
+                        userGoDataId:targetUser.userGoDataId,
+                        email:targetUser.email
+                    };
+                const queryUpdate = { _id: licenseToTransfer._id };
+                
+                GoDataLicenses.updateOne( queryUpdate, { "$push": { keys: newKey } }).then( (updateRes)=> {
+                // Step4. Notify user, that the transfer was successfull
+                    return res.status(201).send({"message": "Transfer completed successfully"});
+                } ).catch( ( err ) =>
+                {
+                    return res.status(500).send({"error": "Transfer failed, please try again"});
+                });
             }else{
-                return res.status(404).send({"error": "Cannot transfer,User doesn't have permission either"});
+                return res.status(400).send({"error": "Cannot transfer,Target User doesn't exist"});
             }
         }else{
-            return res.status(404).send({"error": "No license exists, with this caseId"});
+            return res.status(404).send({"error": "No license exists, for this caseId"});
         }
     });
 

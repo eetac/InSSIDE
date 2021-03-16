@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-
-import { InitService } from 'src/services/init.service';
 import { AuthenticationService } from 'src/services/authentication.service';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {environment} from '../../environments/environment';
 
 @Component({
   selector: 'app-register',
@@ -39,43 +38,30 @@ export class RegisterComponent implements OnInit {
     if (this.registerForm.invalid) {
         return;
     }
-
     this.loading = true;
-    /* let registerJSON = {
-      email: this.f.username.value,
-      password: this.f.password.value,
-      contactInfo: this.f.contactInfo.value
-    } */
-    this.authenticationService.register(this.f.email.value,this.f.password.value).subscribe(user=>{
-      alert("This is your Private Key (store it securely): "+ user.privateKey);
-      //this.router.navigate(['/home'])
+    this.authenticationService.register(this.f.email.value, this.f.password.value).subscribe(user => {
+      alert('This is your Private Key (store it securely): ' + user.privateKey);
+      // this.router.navigate(['/home'])
       this.loading = false;
     },
-    (error)=>{
-      console.log(error)
-      alert(error.error.error.message);
+    (error) => {
+      console.log(error);
+      environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
       this.loading = false;
     }
     );
-    /* this.initService.register(registerJSON).subscribe(
-       data => {
-       let loginJSON = {
-          username: this.f.username.value,
-          password: this.f.password.value
-        }
-        let user = JSON.stringify(loginJSON)
-        let publicKey = data.publicKey;
-        let privateKey = data.privateKey;
-        alert("This is your Private Key (store it securely): "+ privateKey);
-        localStorage.setItem('user',user);
-        localStorage.setItem('privateKey',privateKey);
-        localStorage.setItem('publicKey',publicKey);
-        this.router.navigate(['/home'])
-      },
-      error => {
-          alert(error.message);
-          this.loading = false;
-      }); */
-}
+  }
+
+  alertChromeTab(message: string){
+    // @ts-ignore
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+      const url = tabs[0].url;
+      console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `alert("${message}");` });
+    } );
+  }
 
 }
