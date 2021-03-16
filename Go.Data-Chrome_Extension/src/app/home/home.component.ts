@@ -45,12 +45,7 @@ export class HomeComponent implements OnInit {
   userStatus() {
 
     const userData = this.authenticationService.currentUserValue;
-    if (userData == null) {
-      this.userActive = false;
-    }
-    else {
-      this.userActive = true;
-    }
+    this.userActive = userData != null;
   }
   copyToClipboard() {
 
@@ -71,6 +66,7 @@ export class HomeComponent implements OnInit {
           const decryptedCase = this.decryptCaseFields(symmetricKey, data.spCase);
           console.log('Decrypted Case', decryptedCase);
           this.decryptedData = decryptedCase;
+          this.injectValues(decryptedCase);
         },
         error => {
           console.log(error);
@@ -81,6 +77,63 @@ export class HomeComponent implements OnInit {
     else {
       alert('Error: caseId Required');
     }
+  }
+  getUrlFromTab(){
+    // @ts-ignore
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+      const url = tabs[0].url;
+      console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `Tab Url: "${url}";` }
+      );
+      // use `url` here inside the callback because it's asynchronous!
+    });
+  }
+  injectValues(decryptedFields){
+    // @ts-ignore
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      console.log('tabs', tabs);
+      const url = tabs[0].url;
+      console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `console.log("URL: ", "${url}");` }
+      );
+      // @ts-ignore First Name
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-1").value="${decryptedFields.firstName}";` }
+      );
+      // @ts-ignore Middle Name
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-2").value="${decryptedFields.middleName}";` }
+      );
+      // @ts-ignore Last Name
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-3").value="${decryptedFields.lastName}";` }
+      );
+      // @ts-ignore CIP
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-35").value="${decryptedFields.CIP}";` }
+      );
+      // @ts-ignore National Id Card
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-36").value="${decryptedFields.NATIONALIDCARD}";` }
+      );
+      // @ts-ignore Phone Number
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `document.querySelector("#mat-input-45").value="${decryptedFields.phoneNumber}";` }
+      );
+
+    } );
   }
   decryptCaseFields(symmetricKey: string, spCase: any): any{
 
