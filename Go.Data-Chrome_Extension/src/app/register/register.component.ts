@@ -3,7 +3,8 @@ import { AuthenticationService } from 'src/services/authentication.service';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import {environment} from '../../environments/environment';
-
+import { Clipboard } from '@angular/cdk/clipboard';
+// noinspection JSIgnoredPromiseFromCall
 @Component({
   selector: 'app-register',
   templateUrl: './register.component.html',
@@ -19,6 +20,7 @@ export class RegisterComponent implements OnInit {
     private formBuilder: FormBuilder,
     private router: Router,
     private authenticationService: AuthenticationService,
+    private clipboard: Clipboard
   ) { }
 
   ngOnInit(): void {
@@ -40,9 +42,11 @@ export class RegisterComponent implements OnInit {
     }
     this.loading = true;
     this.authenticationService.register(this.f.email.value, this.f.password.value).subscribe(user => {
-      alert('This is your Private Key (store it securely): ' + user.privateKey);
-      // this.router.navigate(['/home'])
+     /* const message = `This is your Private Key (store it securely): ${user.privateKey}`;*/
+      this.clipboard.copy(user.privateKey);
+      environment.isExtensionBuild ? this.alertChromeTab('Private Key copied to clipboard, remember to save it!') : alert('Private Key copied to clipboard, remember to save it!');
       this.loading = false;
+      this.router.navigate(['/home']);
     },
     (error) => {
       console.log(error);
@@ -51,12 +55,29 @@ export class RegisterComponent implements OnInit {
     }
     );
   }
-
+  /*copyAchievements(message: string) {
+    const pending = this.clipboard.beginCopy(message);
+    let remainingAttempts = 3;
+    const attempt = () => {
+      const result = pending.copy();
+      if (!result && --remainingAttempts) {
+        setTimeout(attempt);
+      } else {
+        // Remember to destroy when you're done!
+        pending.destroy();
+      }
+    };
+    attempt();
+  }*/
   alertChromeTab(message: string){
     // @ts-ignore
     chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
       const url = tabs[0].url;
       console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `console.log("${message}");` });
       // @ts-ignore
       chrome.tabs.executeScript(
         tabs[0].id,

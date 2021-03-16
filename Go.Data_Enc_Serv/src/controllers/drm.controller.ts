@@ -12,7 +12,7 @@ async function login(req: Request, res: Response) {
 
     console.log('Log in -> email: ' + req.body.email + ' ' + req.body.password)
     if (!req.body.email || !req.body.password) {
-        return res.status(400).json({ 'msg': 'You need to send email and password' });
+        return res.status(400).json({error: { message:"Email/Password required" ,status:400}});
     }
     User.findOne({ email: req.body.email }).then((user)=>{
         if(user!=null){
@@ -108,7 +108,7 @@ async function getKeyOfCase(req: Request, res: Response) {
                 while (goDataLicense.keys[i].email.toString() != email) {
                     i = i + 1;
                     if(goDataLicense.keys.length==i){
-                        return res.status(404).send({"error": "Don't have permission for the case"});
+                        return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
                     }
                 }
                 if (goDataLicense.keys[i].email.toString() == email) {
@@ -122,23 +122,23 @@ async function getKeyOfCase(req: Request, res: Response) {
                                 "spCase": caseResponse
                             });
                         } else {
-                          return res.status(404).send({"error": "Case not found, erroneous id!"});
+                          return res.status(404).send({error: { message:"Case not found on GoData" ,status:404}});
                         }
                     }).catch((err) => {
                         //Some error, can't retrieve case
                         console.log(err);
-                        return res.status(500).send({"error": "Server error, while trying to find case!"});
+                        return res.status(500).send({error: { message:"Server error, try again" ,status:500}});
                     });
                 }else{
                 // User hasn't got permission to view the case nether the key
-                    return res.status(404).send({"error": "Don't have permission for the case"});
+                    return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
                 }
             }else{
-               res.status(404).send({"error": "Case not found, erroneous id!"});
+               res.status(404).send({error: { message:"Case not found, erroneus id" ,status:404}});
             }
         }).catch((err)=>{
             console.log("Error while getting GoDataLicense "+err);
-            return res.status(500).send({"error": "Server error, please try again"});
+            return res.status(500).send({error: { message:"Server error, try again" ,status:500}});
         });
 }
 
@@ -154,12 +154,12 @@ async function dataKeyTransfer(req:Request, res: Response){
     // First we find that the email exists
     let managerUser = await User.findOne({ email: config.USER});
     if(managerUser==null){
-        return res.status(500).send({"error": "Cannot transfer, server error"});
+        return res.status(500).send({error: { message:"Cannot transfer, server error" ,status:500}});
     }
     let targetUser =  await User.findOne({ email: emailToTransfer});
     //User exists
     if(targetUser==null){
-        return res.status(400).send({"error": "Cannot transfer,Target User doesn't exist"});
+        return res.status(404).send({error: { message:"Cannot transfer, target email doesn't exist" ,status:404}});
     }
     // Contains the symmetric key!
     GoDataLicenses.findOne({ caseId: caseId}).then((licenseToTransfer)=>{
@@ -172,7 +172,7 @@ async function dataKeyTransfer(req:Request, res: Response){
             while (licenseToTransfer.keys[i].email.toString() != config.USER) {
                 i = i + 1;
                 if(licenseToTransfer.keys.length==i){
-                    return res.status(500).send({"error": "Server error, please contact administrator"});
+                    return res.status(500).send({error: { message:"Server error, please contact administrator" ,status:500}});
                 }
             }
             
@@ -199,13 +199,13 @@ async function dataKeyTransfer(req:Request, res: Response){
                     return res.status(201).send({"message": "Transfer completed successfully"});
                 } ).catch( ( err ) =>
                 {
-                    return res.status(500).send({"error": "Transfer failed, please try again"});
+                    return res.status(500).send({error: { message:"Transfer incomplete, try again later." ,status:500}});
                 });
             }else{
-                return res.status(400).send({"error": "Cannot transfer,Target User doesn't exist"});
+                return res.status(404).send({error: { message:"Transfer failed, Target user doesn't exist." ,status:404}});
             }
         }else{
-            return res.status(404).send({"error": "No license exists, for this caseId"});
+            return res.status(404).send({error: { message:"No license found for this caseId" ,status:404}});
         }
     });
 
