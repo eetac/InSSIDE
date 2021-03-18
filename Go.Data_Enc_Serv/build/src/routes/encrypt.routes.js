@@ -8,5 +8,5 @@ const encrypt_controller_1 = __importDefault(require("../controllers/encrypt.con
 /*import {EncryptCases} from "../lib/EncryptCases";*/
 const router = express_1.Router();
 router.get('/encrypt', encrypt_controller_1.default.encryptCases);
-router.post('/decrypt', encrypt_controller_1.default.decryptCase);
+/*router.post('/decrypt',encryptController.decryptCase);*/
 exports.default = router;

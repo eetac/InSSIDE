@@ -7,11 +7,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const app_1 = __importDefault(require("./app")); //Exported App importing here
 //Execute Connection to BDD before launching the Server
 const database_1 = __importDefault(require("./database"));
-const config_1 = __importDefault(require("./configurations/config"));
+const config = require('./configurations/config');
 //Server definition
 const path = require('path');
 const packageJson = require('../package.json');
-const { Worker } = require('worker_threads');
+/*const autoEncrypt = require('./workers/worker')*/
+/*import autoEncrypt from "./workers/worker";*/
+/*const { Worker } = require('worker_threads')*/
+/*const { fork } = require('child_process');*/
+const child_process = require('child_process');
 //Error Handling - Server
 const onError = (error) => {
     if (error.syscall !== 'listen')
@@ -43,25 +47,48 @@ app_1.default.use(function (req, res, next) {
     next();
 });
 // Child Process to be executed for autoEncrypt
-function runService( /*workerData:any*/) {
+/*function runService(/!*workerData:any*!/) {
     return new Promise((resolve, reject) => {
-        const worker = new Worker('./src/workers/migration.js', {
+        const worker = new Worker(path.resolve(__dirname,'workers/migration.js'), {
             workerData: {
                 path: 'worker.ts'
             }
         });
         worker.on('message', resolve);
         worker.on('error', reject);
-        worker.on('exit', (code) => {
+        worker.on('exit', (code: number) => {
             if (code !== 0)
                 reject(new Error(`Worker stopped with exit code ${code}`));
-        });
-    });
-}
+        })
+    })
+}*/
 async function runOffThread() {
-    const result = await runService();
-    console.log(result);
+    /*const result = await runService()
+    console.log(result);*/
+    /*const n = fork(path.resolve(__dirname,'workers/migration.js'));*/
+    let workerProcess = child_process.spawn('node', [path.resolve(__dirname, 'workers/migration.js')]);
+    workerProcess.stdout.on('data', function (data) {
+        console.log('childProcess: ' + data);
+    });
+    workerProcess.stderr.on('data', function (data) {
+        console.log('childProcess Error: ' + data);
+    });
+    workerProcess.on('close', function (code) {
+        console.log('child process exited with code ' + code);
+    });
+    /*const child = fork('./src/workers/worker.ts');
+    console.log(process.execArgv);
+    /!*child.on('message', (message: string) => {
+        console.log('Result: ', message)
+    });*!/
+    child.kill('SIGINT');*/
 }
+process.on('beforeExit', (code) => {
+    console.log('Process beforeExit event with code: ', code);
+});
+process.on('exit', (code) => {
+    console.log('Process exit event with code: ', code);
+});
 // Server Initialization and Port mapping
 let server = require('http').Server(app_1.default);
 const port = app_1.default.get('port');
@@ -74,8 +101,9 @@ database_1.default.initiateDB().then((res) => {
         // Everything ok, server initialization
         server.listen(port);
         // Create 2nd Thread where the autoEncrypt works every X min
-        runOffThread().catch(err => console.error(err));
-        console.log(config_1.default.autoEncryptSeconds);
+        /*autoEncrypt.timerEncrypt();*/
+        if (config.autoEncryptSeconds > 0)
+            runOffThread().catch(err => console.error(err));
     }).catch((err) => {
         //Some unexpected error occurred!
         console.log("Error creating default admin, server won't be ran : " + err);

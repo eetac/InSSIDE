@@ -22,16 +22,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 //USERS OF THE DRM SERVER
 const UserSchema = new mongoose_1.Schema({
-    username: {
+    email: {
         type: String,
         required: true,
         unique: true
     },
-    contactInfo: {
+    password: {
         type: String,
         required: true
     },
-    password: {
+    userGoDataId: {
         type: String,
         required: true
     },

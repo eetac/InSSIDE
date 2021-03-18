@@ -3,16 +3,16 @@
     border-collapse: collapse;
     width: 100%;
   }
-  
+
   #decryptedCase td, #decryptedCase th {
     border: 1px solid #ddd;
     padding: 8px;
   }
-  
+
   #decryptedCase tr:nth-child(even){background-color: #f2f2f2;}
-  
+
   #decryptedCase tr:hover {background-color: #ddd;}
-  
+
   #decryptedCase th {
     padding-top: 12px;
     padding-bottom: 12px;

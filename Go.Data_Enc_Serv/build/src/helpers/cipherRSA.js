@@ -29,7 +29,7 @@ function decryptKeyRSA(privateKey, encryptedData) {
         // encrypt the data in the previous step
         padding: crypto_1.default.constants.RSA_PKCS1_OAEP_PADDING,
         oaepHash: "sha256",
-    }, new Buffer(encryptedData, 'base64')).toString();
+    }, Buffer.from(encryptedData, 'base64')).toString();
 }
 exports.default = {
     encryptKeyRSA,

@@ -23,11 +23,12 @@ const mongoose_1 = __importStar(require("mongoose"));
 //USERS OF THE DRM SERVER
 const GoDataLicensesSchema = new mongoose_1.Schema({
     caseId: { type: String, required: true },
-    cipHash: { type: String, required: true },
+    hashId: { type: String, required: true },
     creatorEmail: { type: String, required: true },
     keys: [{
-            hospitalName: { type: String, required: true },
-            usedKey: { type: String, required: true }
+            usedKey: { type: String, required: true },
+            userGoDataId: { type: String, required: true },
+            email: { type: String, required: true }
         }]
 });
 //Mongoose.model(name, [schema], [collectionName], [skipInit])

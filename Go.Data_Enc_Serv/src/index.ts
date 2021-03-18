@@ -60,6 +60,7 @@ async function runOffThread() {
     /*const result = await runService()
     console.log(result);*/
     /*const n = fork(path.resolve(__dirname,'workers/migration.js'));*/
+    console.log('Ran');
     let workerProcess = child_process.spawn('node', [path.resolve(__dirname,'workers/migration.js')]);
     workerProcess.stdout.on('data', function (data) {
         console.log('childProcess: ' + data);
@@ -99,8 +100,9 @@ dbHandler.initiateDB().then((res)=>{
         server.listen(port);
         // Create 2nd Thread where the autoEncrypt works every X min
         /*autoEncrypt.timerEncrypt();*/
-        if(config.autoEncryptSeconds>0)
+        if(config.AUTOENCRYPTIONTIMER>0){
             runOffThread().catch(err => console.error(err));
+        }
     }).catch((err)=>{
         //Some unexpected error occurred!
         console.log("Error creating default admin, server won't be ran : "+err);

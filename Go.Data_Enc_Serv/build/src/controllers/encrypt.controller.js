@@ -17,21 +17,21 @@ const encryptCases = async (req, res) => {
     anonymization_class_1.default.encryptCases(cases).then((result) => {
         return res.status(result.statusCode).json({ message: result.message });
     }).catch((erroneousResult) => {
-        return res.status(erroneousResult.statusCode).json({ message: erroneousResult.message });
+        return res.status(erroneousResult.statusCode).json({ error: { message: erroneousResult.message, status: erroneousResult.statusCode } });
     });
 };
 /**
- * Decrypts the case, given username(token:Future) and caseId
+ * Decrypts the case, given username(token:Future) and hashId
  * Examples:
  *
- *    {"caseId":"bla-bla-bla","username":"admin"}
+ *    {"hashId":"bla-bla-bla","username":"admin"}
  *
  */
-const decryptCase = async (req, res) => {
-    anonymization_class_1.default.decryptCases(req.body.username, req.body.caseId).then((result) => {
-        return res.status(result.statusCode).json({ message: result.message });
-    }).catch((erroneousResult) => {
-        return res.status(erroneousResult.statusCode).json({ message: erroneousResult.message });
+/*const decryptCase: any = async (req: Request, res: Response)=> {
+    anonymizationHelper.decryptCases(req.body.username,req.body.hashId).then((result)=>{
+        return res.status(result.statusCode).json(result);
+    }).catch((erroneousResult)=>{
+        return res.status(erroneousResult.statusCode).json( erroneousResult );
     });
-};
-exports.default = { encryptCases, decryptCase };
+}*/
+exports.default = { encryptCases };

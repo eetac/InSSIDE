@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
 const user_1 = __importDefault(require("./models/user"));
-const config_1 = __importDefault(require("./configurations/config"));
+const config = require('./configurations/config');
 const bcrypt = require('bcrypt');
 const crypto = require("crypto");
 /**===========================================================
@@ -19,8 +19,8 @@ function initiateDB() {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
             };
-            mongoose_1.default.connect(config_1.default.DB.URI, dbOptions).then(r => {
-                console.log('Connection w/ DB Successful!');
+            mongoose_1.default.connect(config.DB.URI, dbOptions).then(r => {
+                console.log('Connection w/ DRM DB Successful!');
                 resolve(true);
                 return;
             }).catch((err) => {
@@ -44,13 +44,13 @@ function initiateDB() {
 function createAdmin() {
     return new Promise((resolve, reject) => {
         try {
-            let query = { "username": "admin" };
+            let query = { email: config.USER };
             user_1.default.findOne(query).then((res) => {
                 if (res == null) {
                     // Admin not created in the DB
                     // Creating a new admin
-                    const saltRounds = 10;
-                    let password = bcrypt.hashSync("admin", saltRounds);
+                    const saltRounds = config.saltRounds;
+                    let password = bcrypt.hashSync(config.PASSWORD, saltRounds);
                     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 4096,
                         publicKeyEncoding: {
                             type: 'spki',
@@ -62,14 +62,15 @@ function createAdmin() {
                         }
                     });
                     let managerUser = new user_1.default({
-                        username: "admin",
-                        contactInfo: "admin@admin.com",
+                        email: config.USER,
                         password: password,
+                        userGoDataId: config.USERGODATAID,
+                        institutionName: config.INSTITUTION,
                         publicKey: publicKey,
                         privateKey: privateKey
                     });
                     managerUser.save().then((_) => {
-                        console.log("admin created with username:admin & password:admin; Remember to change!");
+                        console.log(`Admin Account Created with email: ${config.USER}`);
                         resolve(true);
                         return;
                     }).catch((err) => {
@@ -79,7 +80,7 @@ function createAdmin() {
                 }
                 else {
                     //No need to create admin,already exits!
-                    console.log("Admin account already exists");
+                    console.log(`Admin account already exists with email:${config.USER}`);
                     resolve(true);
                     return;
                 }

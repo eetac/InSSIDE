@@ -5,6 +5,8 @@ import {AuthenticationService} from 'src/services/authentication.service';
 import {CaseService} from 'src/services/case.service';
 import {CryptographyService} from 'src/services/cryptography.service';
 import {environment} from '../../environments/environment';
+import {MatSnackBar} from "@angular/material/snack-bar";
+/*import {MatSnackBar} from '@angular/material/snack-bar';*/
 
 @Component({
   selector: 'app-home',
@@ -19,12 +21,13 @@ export class HomeComponent implements OnInit {
   decryptedDataAvailable = false;
   decryptForm: FormGroup;
   transferForm: FormGroup;
-
+  hasPermissions = true;
   constructor(
     private formBuilder: FormBuilder,
     private authenticationService: AuthenticationService,
     private caseService: CaseService,
-    private cryptographyService: CryptographyService
+    private cryptographyService: CryptographyService,
+    private snackBar: MatSnackBar
   ) {
     console.log('ran');
     if (environment.isExtensionBuild) {
@@ -82,14 +85,14 @@ export class HomeComponent implements OnInit {
             this.getCaseAndDecrypt(caseIdUrl);
           }else{
 
-            environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Case Page') : alert('Error: Not GoData Case Page');
+            environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Patient Case Page') : alert('Error: Not GoData Case Page');
 
           }
         }else{
-          environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Case Page') : alert('Error: Not GoData Case Page');
+          environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Patient Case Page') : alert('Error: Not GoData Case Page');
         }
       }else{
-        environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Case Page') : alert('Error: Not GoData Case Page');
+        environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Patient Case Page') : alert('Error: Not GoData Case Page');
       }
     } );
   }
@@ -114,18 +117,31 @@ export class HomeComponent implements OnInit {
             this.decryptedDataAvailable = true;
             this.injectValues(decryptedCase);
           }catch (e) {
-            environment.isExtensionBuild ? this.alertChromeTab('Error: License/Case are bad.') : alert('Error: License/Case are bad.');
+            this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
+            // environment.isExtensionBuild ? this.alertChromeTab('Error: License/Case are bad.') : alert('Error: License/Case are bad.');
           }
         }catch (e) {
-          environment.isExtensionBuild ? this.alertChromeTab('Error: Private Key Incorrect and/or format.') : alert('Error: Private Key Incorrect and/or format.');
-          this.authenticationService.logout();
+          this.hasPermissions = false;
+          this.openSnackBar('Error: Private Key and/or format incorrect .', 'Close', 'error-snackbar');
+          // tslint:disable-next-line:max-line-length
+          // environment.isExtensionBuild ? this.alertChromeTab('Error: Private Key Incorrect and/or format.') : alert('Error: Private Key Incorrect and/or format.');
+          // this.authenticationService.logout();
         }
       },
       error => {
         console.log(error);
-        environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
+        this.openSnackBar(error.error.error.message, 'Close', 'error-snackbar');
+        // environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
       }
     );
+  }
+  openSnackBar(message: string, action: string, className: string) {
+    this.snackBar.open(message, action, {
+      duration: 9000,
+      verticalPosition: 'top',
+      horizontalPosition: 'center',
+      panelClass: [className],
+    });
   }
   alertChromeTab(message: string){
     // @ts-ignore
