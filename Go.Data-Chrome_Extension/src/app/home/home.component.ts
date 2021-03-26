@@ -17,6 +17,7 @@ export class HomeComponent implements OnInit {
   // Table
   headers = ['Personal', 'Information'];
   decryptedData = {};
+  injectionDecryptedData = {};
   userActive: boolean;
   decryptedDataAvailable = false;
   decryptForm: FormGroup;
@@ -115,7 +116,7 @@ export class HomeComponent implements OnInit {
             console.log('Decrypted Case', decryptedCase);
             this.decryptedData = decryptedCase;
             this.decryptedDataAvailable = true;
-            this.injectValues(decryptedCase);
+            this.injectValues(this.injectionDecryptedData);
           }catch (e) {
             this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
             // environment.isExtensionBuild ? this.alertChromeTab('Error: License/Case are bad.') : alert('Error: License/Case are bad.');
@@ -167,67 +168,17 @@ export class HomeComponent implements OnInit {
         tabs[0].id,
         { code: `console.log("URL: ", "${url}");` }
       );
+      // TODO : LOOP OVER ALL OF THE PROPERTIES IN DECRYPTED FIELD AND USE THAT TO INJECT THE VALUES ON THE GODATA PAGE
+      Object.keys(decryptedFields).forEach(function(key,index) {
+        // key: the name of the object key
+        // index: the ordinal position of the key within the object 
+         // REDO 
       // @ts-ignore First Name
       chrome.tabs.executeScript(
         tabs[0].id,
-        { code: `document.querySelector("#mat-input-1").value="${decryptedFields.firstName}";` }
+        { code: `document.querySelector('input[name="${key}"]') ? document.querySelector('input[name="${key}"]').value="${decryptedFields[key]}":x=0;` }
       );
-      // @ts-ignore Middle Name
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-2").value="${decryptedFields.middleName}";` }
-      );
-      // @ts-ignore Last Name
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-3").value="${decryptedFields.lastName}";` }
-      );
-      // @ts-ignore CIP
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-35").value="${decryptedFields.CIP}";` }
-      );
-      // @ts-ignore National Id Card
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-36").value="${decryptedFields.NATIONALIDCARD}";` }
-      );
-      // @ts-ignore Phone Number
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-45").value="${decryptedFields.phoneNumber}";` }
-      );
-      // TWO VERSIONS OF ANGULAR ARE CREATED FOR GO DATA WEBPAGE, THUS TWO MODES OF JQUERY REQUIRED
-      // @ts-ignore First Name
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-76").value="${decryptedFields.firstName}";` }
-      );
-      // @ts-ignore Middle Name
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-77").value="${decryptedFields.middleName}";` }
-      );
-      // @ts-ignore Last Name
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-78").value="${decryptedFields.lastName}";` }
-      );
-      // @ts-ignore CIP
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-110").value="${decryptedFields.CIP}";` }
-      );
-      // @ts-ignore National Id Card
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-111")="${decryptedFields.NATIONALIDCARD}";` }
-      );
-      // @ts-ignore Phone Number
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector("#mat-input-120")="${decryptedFields.phoneNumber}";` }
-      );
+    });
     } );
   }
 
@@ -236,6 +187,7 @@ export class HomeComponent implements OnInit {
     // TODO: Decrypt all of the fields found in the caseEncrypted, decrypt and return it!
     // tslint:disable-next-line:prefer-const
     let decryptedCaseWithSensitiveFields = {};
+    let decryptedCaseNamed = {};
     // Decrypting
     environment.sensitiveData.forEach(sensitiveField => {
       const subSensitiveField = sensitiveField.split(',');
@@ -253,6 +205,7 @@ export class HomeComponent implements OnInit {
             // spCase[sensitiveField] = decryptedField
             // tslint:disable-next-line:max-line-length
             decryptedCaseWithSensitiveFields[sensitiveField] = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
+            decryptedCaseNamed[sensitiveField] =  decryptedCaseWithSensitiveFields[sensitiveField];
           }
         } else {
           console.log(`${sensitiveField} is null, not decrypting this field!`);
@@ -276,10 +229,13 @@ export class HomeComponent implements OnInit {
                   // spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
                   if (subSensitiveField[0] === 'documents') {
                     const documentTypeSplit = spCaseSubObject.type.split('_');
-                    const documentType = documentTypeSplit.splice(6, documentTypeSplit.length - 1).join('');
-                    decryptedCaseWithSensitiveFields[documentType] = decryptedField;
+                    const documentType:string = this.properFormatString(documentTypeSplit);
+                    decryptedCaseWithSensitiveFields[`documents[${index}][number]`] = decryptedField;
+                    decryptedCaseNamed[documentType] = decryptedField;
+                    
                   } else {
                     decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
+                    decryptedCaseNamed[subSensitiveField[1]] = decryptedField;
                   }
                 }
               }
@@ -289,9 +245,16 @@ export class HomeComponent implements OnInit {
           }
       }
     });
-    return decryptedCaseWithSensitiveFields;
+    this.injectionDecryptedData = decryptedCaseWithSensitiveFields;
+    return decryptedCaseNamed;
   }
-
+  properFormatString(textToFormat: Array<string>):string {
+    let textFormatted: string = "";
+    /* let text1 = textToFormat.splice(6, textToFormat.length - 1).join(''); */
+    let textArr1 = textToFormat.splice(6, textToFormat.length - 1);
+    let text2 = textArr1.join(' ');
+    return text2;
+  }
   shareAccessToHospitals(){
     if ((this.fdecryptForm.caseId.value !== '') && (this.ftransferForm.emailToTransfer.value !== '')) {
 

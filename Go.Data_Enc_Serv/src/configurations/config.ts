@@ -23,12 +23,12 @@ const config:IConfig = {
     IV_LENGTH       :   16, // Minimum Length 16 IV
     saltRounds      :   10, // Hash Function Rounds, recommended for security at least 10
     USER            :   "encryption@local.com",
-    USERGODATAID    :   "7ce62a91-c897-4422-be86-22bc584392eb",
-    INSTITUTION     :   "SALUT",
+    USERGODATAID    :   "4c876f8c-3bbc-4324-b153-3b0829078d9b",
+    INSTITUTION     :   "SALUT GENCAT",
     PASSWORD        :   "kruskechi1234",
     DOCUMENT_HASH   :   "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID",
     USER_AGENT      :   "GoData LocalHost Connector 2.5.6",
-    OUTBREAK_ID     :   "24cdb348-a7aa-463b-a45d-fff005ae4952",
+    OUTBREAK_ID     :   "be359a7a-623e-46ac-ac18-420dc0db3a59",
     SENSITIVEDATA   :   ["firstName","middleName","lastName","documents,number","addresses,phoneNumber"],
     DB              :   {
         URI     : process.env.MONGODB_URI || 'mongodb://localhost:27017/DRM',
