@@ -5,8 +5,7 @@ import GoDataLicenses,{IGoDataLicensesSchema} from "../models/godataLicense";
 import asymmetricCipher from '../helpers/cipherRSA';
 import goDataHelper from "../helpers/goDataHelper";
 import symmetricCipher from "../helpers/cipherAES";
-const Bcrypt = require('bcrypt');
-
+/* const Bcrypt = require('bcrypt'); */
 interface IResult{
     message:string,
     statusCode:number
@@ -33,7 +32,7 @@ function encryptCases(cases:any): Promise<IResult>{
             /*let institute = cases[i].createdByUser.institutionName.split("_");
             let creatorInstitute = institute.splice(6,institute.length-1).join('');*/
             let createdBy = await goDataHelper.getInstituteCreator(cases[i].createdBy);
-
+            let cip:string;
             console.log("STEP1 --> Institution CREATOR: " + createdBy.creatorInstitute)
             let encryptionKey = crypto.randomFillSync(Buffer.alloc(32)).toString('base64');
             let iv = crypto.randomBytes(config.IV_LENGTH);
@@ -72,10 +71,14 @@ function encryptCases(cases:any): Promise<IResult>{
                     if(cases[i][subSensitiveField[0]]!=null){
                         for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
                             //Cannot Encrypt Other Document as this contains the CIP HASH!
-                            if (!(subSensitiveField[0] == "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() == config.DOCUMENT_HASH)) {
+                            if (subSensitiveField[0] === "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() !== config.DOCUMENT_HASH) {
                                 let subField:string  = subSensitiveField[1];
                                 if(subSensitiveField[0] == "documents"){
                                     subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
+                                    if(cases[i][subSensitiveField[0]][k]["type"].toString() ==="LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP")
+                                    {   cip = cases[i][subSensitiveField[0]][k]["number"];
+                                        console.log("Assigned CIP For HASH: "+cip);
+                                    }
                                 }
                                 console.log(`${subField}: ${cases[i][subSensitiveField[0]][k][subSensitiveField[1]]}`);
                                 if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
@@ -114,16 +117,17 @@ function encryptCases(cases:any): Promise<IResult>{
                             }
                         } */
                         for(let docuIndex=0; docuIndex<cases[i]["documents"].length; docuIndex++){
-                            if(cases[i]["documents"][positionCIP]["type"] == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP"){
+                            if(cases[i]["documents"][docuIndex]["type"] == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP"){
                                 cipExists = true;
+                                console.log("CIP check: "+cip);
                                 positionCIP = docuIndex;
                                 /* console.log("...............CIP FOUND........................."); */
                                 break;
                             }
                         }
                         if(cipExists){
-                            let fullFieldsToHash = cases[i]["documents"][positionCIP]["number"].toUpperCase();
-                            let DOCUMENT_HASH = Bcrypt.hashSync(fullFieldsToHash,config.saltRounds);
+                            let fullFieldsToHash = cip;
+                            let DOCUMENT_HASH = crypto.createHash('md5').update(fullFieldsToHash).digest("hex");
                             cases[i]["documents"][cases[i]["documents"].length] = {
                                 "type": config.DOCUMENT_HASH,
                                 "number": DOCUMENT_HASH

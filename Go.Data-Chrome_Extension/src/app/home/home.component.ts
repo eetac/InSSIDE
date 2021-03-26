@@ -220,7 +220,7 @@ export class HomeComponent implements OnInit {
           if (spCase[subSensitiveField[0]] != null) {
             spCase[subSensitiveField[0]].forEach((spCaseSubObject: any, index: number) => {
               console.log('subSensitiveField[0]', subSensitiveField[0]);
-              if (!(subSensitiveField[0] === 'documents' && spCaseSubObject.type.toString() === 'LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID')) {
+              if (!(subSensitiveField[0] === 'documents' && spCaseSubObject.type.toString() !== 'LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID')) {
                 const sensitiveFieldValueSplit = spCaseSubObject[subSensitiveField[1]].split('/');
                 const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
                 const encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue, );
