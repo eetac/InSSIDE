@@ -1,4 +1,3 @@
-/* tslint:disable:no-trailing-whitespace */
 import {Component, OnInit} from '@angular/core';
 import {FormBuilder, FormGroup, Validators} from '@angular/forms';
 import {AuthenticationService} from 'src/services/authentication.service';
@@ -7,8 +6,6 @@ import {DomManipulationService} from 'src/services/dom-manipulation.service';
 import {CryptographyService} from 'src/services/cryptography.service';
 import {environment} from '../../environments/environment';
 import {MatSnackBar} from '@angular/material/snack-bar';
-
-/*import {MatSnackBar} from '@angular/material/snack-bar';*/
 
 @Component({
   selector: 'app-home',
@@ -108,33 +105,32 @@ export class HomeComponent implements OnInit {
    * @param caseId - string
    */
   runDecryption( caseId: string) {
-    const caseData = this.domManipulationService.getCaseFromDOM();
-    if (caseData != null) {
-      // CaseData retrieved --> Now get the license than decrypt and in last Inject to the page
-      // Step1. Get License
-      const decryptedLicense = this.getLicenseAndObtainSymmetricKey(caseId);
-      // Step2. Decrypt License and obtain symmetric key
-      if (decryptedLicense == null) {
-        this.openSnackBar('Error: Private key not valid and/or does not has permissions', 'Close', 'error-snackbar');
-        return;
+    this.domManipulationService.getCaseFromDOM().then((caseData) => {
+      // @ts-ignore
+      // tslint:disable-next-line:only-arrow-functions
+      chrome.runtime.sendMessage({PromiseResultGetCaseFromDOM: caseData}, function(response) {});
+      if (caseData != null) {
+        // CaseData retrieved --> Now get the license than decrypt and in last Inject to the page
+        // Step1. Get License and Decrypt the license to obtain symmetric key
+        this.getLicenseAndObtainSymmetricKey(caseId).then((decryptedLicense) => {
+          // Step3. Decrypt the case with the symmetric key
+          try {
+            const decryptedCase = this.decryptCaseFromLicense(decryptedLicense, caseData);
+            // @ts-ignore
+            // tslint:disable-next-line:only-arrow-functions
+            chrome.runtime.sendMessage({decryptedCase}, function(response) {});
+            this.decryptedData = decryptedCase;
+            this.decryptedDataAvailable = true;
+          } catch (e) {
+            this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
+          }
+          // Step4. Inject the decrypted data to the webpage
+          this.domManipulationService.injectValues(this.injectionDecryptedData);
+        }).catch((_) => {});
+      } else{
+        environment.isExtensionBuild ? this.alertChromeTab('Error: Could not read the page contents') : alert('Error: Could not read the page content');
       }
-      // Step3. Obtain the case values from the webpage
-      const spCase = this.domManipulationService.getCaseFromDOM();
-      // Step4. Decrypt the case with the symmetric key
-      try {
-        const decryptedCase = this.decryptCaseFromLicense(decryptedLicense, spCase);
-        console.log('Decrypted Case', decryptedCase);
-        this.decryptedData = decryptedCase;
-        this.decryptedDataAvailable = true;
-
-      } catch (e) {
-        this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
-      }
-      // Step5. Inject the decrypted data to the webpage
-      this.domManipulationService.injectValues(this.injectionDecryptedData);
-    } else{
-    environment.isExtensionBuild ? this.alertChromeTab('Error: Could not read the page contents') : alert('Error: Could not read the page content');
-    }
+    });
   }
 
   /**
@@ -144,78 +140,44 @@ export class HomeComponent implements OnInit {
    * @krunal
    * @param caseId - string
    */
-  getLicenseAndObtainSymmetricKey(caseId: string): any {
-    const email = this.authenticationService.currentUserValue.email;
-    const privateKey = this.authenticationService.currentUserValue.privateKey;
-    // tslint:disable-next-line:max-line-length
-    this.caseService.getLicense(email, caseId).subscribe(
-      data => {
-        // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
-        console.log(data);
-        const encryptedLicense = data.license;
-        console.log(`Encrypted license: ${encryptedLicense}`);
-        let decryptedLicense;
-        try{
-          decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
-          // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
-          return decryptedLicense;
-        }catch (e) {
-          this.hasPermissions = false;
-          return null;
-          // tslint:disable-next-line:max-line-length
-          // environment.isExtensionBuild ? this.alertChromeTab('Error: Private Key Incorrect and/or format.') : alert('Error: Private Key Incorrect and/or format.');
-          // this.authenticationService.logout();
-        }
-      },
-      error => {
-        console.log(error);
-        this.openSnackBar(error.error.error.message, 'Close', 'error-snackbar');
-        return null;
-        // environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
-      }
-    );
-  }
-
-  // FIXME : DELETE!
-  getCaseAndDecrypt(caseId) {
-    const email = this.authenticationService.currentUserValue.email;
-    const privateKey = this.authenticationService.currentUserValue.privateKey;
+  getLicenseAndObtainSymmetricKey(caseId: string): Promise<any>{
+    return new Promise(async (resolve, reject ) => {
+      const email = this.authenticationService.currentUserValue.email;
+      const privateKey = this.authenticationService.currentUserValue.privateKey;
       // tslint:disable-next-line:max-line-length
-    this.caseService.getLicense(email, caseId).subscribe(
-      data => {
-        // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
-        console.log(data);
-        const encryptedLicense = data.keyUsed;
-        console.log(`Encrypted license: ${encryptedLicense}`);
-        let decryptedLicense;
-        try{
-          decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
-          // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
+      this.caseService.getLicense(email, caseId).subscribe(
+        data => {
+          // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
+          // @ts-ignore
+          // tslint:disable-next-line:only-arrow-functions
+          chrome.runtime.sendMessage({caseService : data}, function(response) {});
+          const encryptedLicense = data.license;
+          console.log(`Encrypted license: ${encryptedLicense}`);
+          let decryptedLicense;
           try{
-            // FIXME: CHANGE FROM data.spCase to offline DOM and get the case values from there
-            /*const decryptedCase = this.decryptCaseFields(decryptedLicense, data.spCase);*/
-            /*console.log('Decrypted Case', decryptedCase);
-            this.decryptedData = decryptedCase;*/
-            this.decryptedDataAvailable = true;
-            this.domManipulationService.injectValues(this.injectionDecryptedData);
+            // @ts-ignore
+            // tslint:disable-next-line:only-arrow-functions
+            chrome.runtime.sendMessage({privateKey}, function(response) {});
+            decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
+            // @ts-ignore
+            // tslint:disable-next-line:only-arrow-functions
+            chrome.runtime.sendMessage({decryptedLicense}, function(response) {});
+            // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
+            return resolve( decryptedLicense);
           }catch (e) {
-            this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
-            // environment.isExtensionBuild ? this.alertChromeTab('Error: License/Case are bad.') : alert('Error: License/Case are bad.');
+            this.hasPermissions = false;
+            return reject('Error: Private Key Incorrect and/or format.');
+            // tslint:disable-next-line:max-line-length
+            // environment.isExtensionBuild ? this.alertChromeTab('Error: Private Key Incorrect and/or format.') : alert('Error: Private Key Incorrect and/or format.');
+            // this.authenticationService.logout();
           }
-        }catch (e) {
-          this.hasPermissions = false;
-          this.openSnackBar('Error: Private Key and/or format incorrect .', 'Close', 'error-snackbar');
-          // tslint:disable-next-line:max-line-length
-          // environment.isExtensionBuild ? this.alertChromeTab('Error: Private Key Incorrect and/or format.') : alert('Error: Private Key Incorrect and/or format.');
-          // this.authenticationService.logout();
+        },
+        error => {
+          this.openSnackBar(error.error.error.message, 'Close', 'error-snackbar');
+          return reject(error.error.error.message);
         }
-      },
-      error => {
-        console.log(error);
-        this.openSnackBar(error.error.error.message, 'Close', 'error-snackbar');
-        // environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
-      }
-    );
+      );
+    });
   }
 
 
@@ -257,46 +219,24 @@ export class HomeComponent implements OnInit {
         if (spCase[sensitiveFieldArray[0]] != null) {
           spCase[sensitiveFieldArray[0]].forEach((sensitiveDocument: any, index: number) => {
             if (sensitiveDocument.type.toString() !== 'HASHID') {
-              const sensitiveDocumentValueSplitted = sensitiveDocument[sensitiveFieldArray[1]].split('/');
-              const offsetEncryptedFieldValue = sensitiveDocumentValueSplitted[1].length + sensitiveDocumentValueSplitted[2].length + 3;
+              const sensitiveDocumentValueDisjoint = sensitiveDocument[sensitiveFieldArray[1]].split('/');
+              const offsetEncryptedFieldValue = sensitiveDocumentValueDisjoint[1].length + sensitiveDocumentValueDisjoint[2].length + 3;
               const encryptedFieldValue = sensitiveDocument[sensitiveFieldArray[1]].substring(offsetEncryptedFieldValue, );
-              if (sensitiveDocumentValueSplitted[1] === 'ENC') { // if is encrypted
+              if (sensitiveDocumentValueDisjoint[1] === 'ENC') { // if is encrypted
                 // Decrypt Field
                 const decryptedField: string = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
                 // Store the decrypted field as a object with field Type
                 decryptedCaseWithSensitiveFields[`${sensitiveFieldArray[0]}[${index}][${sensitiveFieldArray[1]}]`] = decryptedField;
                 decryptedCaseNamed[sensitiveFieldArray[1]] = decryptedField;
-                // spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
-                /*if (subSensitiveField[0] === 'documents') {
-                  const documentTypeSplit = spCaseSubObject.type.split('_');
-                  const documentType: string = this.properFormatString(documentTypeSplit);
-                  decryptedCaseWithSensitiveFields[`documents[${index}][number]`] = decryptedField;
-                  decryptedCaseNamed[documentType] = decryptedField;
-                } else {*/
-                /*}*/
               }
-              // Else no Decryption Required
             }
           });
         }
       }
     });
     // @ts-ignore
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      console.log('tabs', tabs);
-      const url = tabs[0].url;
-      console.log('url: ', url);
-      // @ts-ignore
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `console.log(${decryptedCaseWithSensitiveFields});` }
-      );
-      // @ts-ignore
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `console.log(${decryptedCaseNamed});` }
-      );
-    } );
+    // tslint:disable-next-line:only-arrow-functions max-line-length
+    chrome.runtime.sendMessage( {decryptedCaseWithSensitiveFields, decryptedCaseNamed }, function(_) {});
     this.injectionDecryptedData = decryptedCaseWithSensitiveFields;
     return decryptedCaseNamed;
   }
@@ -306,6 +246,7 @@ export class HomeComponent implements OnInit {
     const textArr1 = textToFormat.splice(6, textToFormat.length - 1);
     return textArr1.join(' ');
   }
+
   shareAccessToHospitals(){
     if ((this.fdecryptForm.caseId.value !== '') && (this.ftransferForm.emailToTransfer.value !== '')) {
 
@@ -328,7 +269,6 @@ export class HomeComponent implements OnInit {
       environment.isExtensionBuild ? this.alertChromeTab('Error: caseId and Destination Hospital Require') : alert('Error: caseId and Destination Hospital Require');
     }
   }
-
   // Notifiers
   openSnackBar(message: string, action: string, className: string) {
     this.snackBar.open(message, action, {

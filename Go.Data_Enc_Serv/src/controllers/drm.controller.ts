@@ -1,4 +1,3 @@
-import { key } from './../models/godataLicense';
 import { Request, Response} from 'express';
 import goDataHelper from "../helpers/goDataHelper";
 import User, {IUser} from '../models/user';//We send a message to the client
@@ -99,50 +98,37 @@ async function getKeyOfCase(req: Request, res: Response) {
     //Hospital ask for the decryption key of a case and DRM return the key encrypted with the pubKey for security reasons
     let caseId = req.body.caseId;//req.params.hashCase;
     //TODO: Future get from token, now just testing...
-    let email:string = req.body.email;
-        GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
-            if(goDataLicense != null){
-                // GoDataLicense found...
-                let i = 0;
-                // Find where the hospitalName is equal to email, inside the licenses...
-                while (goDataLicense.keys[i].email.toString() != email) {
-                    i = i + 1;
-                    if(goDataLicense.keys.length==i){
-                        return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
-                    }
-                }
-                if (goDataLicense.keys[i].email.toString() == email) {
-                    //We will return the key encrypted with the public key, so only the
-                    // hospital or user with private key can decrypt and get the symmetric key!
-                    goDataHelper.getCase(caseId).then((caseResponse) => {
-                        if (caseResponse.error == null) {
-                            //No error in the response, means correct result
-                            return res.status(200).send({
-                                "license": goDataLicense.keys[i].usedKey,
-                                "spCase": caseResponse
-                            });
-                        } else {
-                          return res.status(404).send({error: { message:"Case not found on GoData" ,status:404}});
-                        }
-                    }).catch((err) => {
-                        //Some error, can't retrieve case
-                        console.log(err);
-                        return res.status(500).send({error: { message:"Server error, try again" ,status:500}});
-                    });
-                }else{
-                // User hasn't got permission to view the case nether the key
+    let email: string = req.body.email;
+    GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
+        if(goDataLicense != null){
+            // GoDataLicense found...
+            let i = 0;
+            // Find where the hospitalName is equal to email, inside the licenses...
+            while (goDataLicense.keys[i].email.toString() != email) {
+                i = i + 1;
+                if(goDataLicense.keys.length==i){
                     return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
                 }
-            }else{
-               res.status(404).send({error: { message:"Case not found, erroneus id" ,status:404}});
             }
-        }).catch((err)=>{
-            console.log("Error while getting GoDataLicense "+err);
-            return res.status(500).send({error: { message:"Server error, try again" ,status:500}});
-        });
+            if (goDataLicense.keys[i].email.toString() == email) {
+                //We will return the key encrypted with the public key, so only the
+                // hospital or user with private key can decrypt and get the symmetric key!
+                return res.status(200).send({
+                    "license": goDataLicense.keys[i].usedKey
+                });
+            }else{
+            // User hasn't got permission to view the case nether the key
+                return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
+            }
+        }else{
+           res.status(404).send({error: { message:"Case not found, erroneous id" ,status:404}});
+        }
+    }).catch((err)=>{
+        console.log("Error while getting GoDataLicense "+err);
+        return res.status(500).send({error: { message:"Server error, try again" ,status:500}});
+    });
 }
 
-// TODO: FIX ME!!
 async function dataKeyTransfer(req:Request, res: Response){
 
     //Only an existent user of a case, can transfer the key to some other hospital
@@ -195,7 +181,7 @@ async function dataKeyTransfer(req:Request, res: Response){
                 const queryUpdate = { _id: licenseToTransfer._id };
                 
                 GoDataLicenses.updateOne( queryUpdate, { "$push": { keys: newKey } }).then( (updateRes)=> {
-                // Step4. Notify user, that the transfer was successfull
+                // Step4. Notify user, that the transfer was successful
                     return res.status(201).send({"message": "Transfer completed successfully"});
                 } ).catch( ( err ) =>
                 {
