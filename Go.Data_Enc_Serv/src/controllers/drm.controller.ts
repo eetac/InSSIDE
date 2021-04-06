@@ -118,7 +118,7 @@ async function getKeyOfCase(req: Request, res: Response) {
                         if (caseResponse.error == null) {
                             //No error in the response, means correct result
                             return res.status(200).send({
-                                "keyUsed": goDataLicense.keys[i].usedKey,
+                                "license": goDataLicense.keys[i].usedKey,
                                 "spCase": caseResponse
                             });
                         } else {

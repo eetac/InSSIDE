@@ -140,9 +140,6 @@ export class CryptographyService {
     const plaintextPart5 = aesDecryptor.finalize();
     console.log('plainText', plaintextPart);*/
     // Node-Forge
-    // tslint:disable-next-line:prefer-const
-
-
     /*const keyBinaryData = new Blob([keyBufferArrByte]);
     console.log(keyBinaryData);
     const ivBinaryData = new Blob([ivBufferArrByte]);

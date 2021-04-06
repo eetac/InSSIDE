@@ -3,6 +3,7 @@ import {Component, OnInit} from '@angular/core';
 import {FormBuilder, FormGroup, Validators} from '@angular/forms';
 import {AuthenticationService} from 'src/services/authentication.service';
 import {CaseService} from 'src/services/case.service';
+import {DomManipulationService} from 'src/services/dom-manipulation.service';
 import {CryptographyService} from 'src/services/cryptography.service';
 import {environment} from '../../environments/environment';
 import {MatSnackBar} from '@angular/material/snack-bar';
@@ -28,6 +29,7 @@ export class HomeComponent implements OnInit {
     private formBuilder: FormBuilder,
     private authenticationService: AuthenticationService,
     private caseService: CaseService,
+    private domManipulationService: DomManipulationService,
     private cryptographyService: CryptographyService,
     private snackBar: MatSnackBar
   ) {
@@ -59,9 +61,7 @@ export class HomeComponent implements OnInit {
 
   decryptCase(){
     if (this.fdecryptForm.caseId.value !== '' ) {
-      this.getCaseAndDecrypt(this.fdecryptForm.caseId.value);
-    }else if (environment.isExtensionBuild) {
-      this.chromeDecryptAndInject();
+      this.runDecryption(this.fdecryptForm.caseId.value);
     }else{
       environment.isExtensionBuild ? this.alertChromeTab('caseId Required') : alert('CaseId Required');
     }
@@ -84,9 +84,10 @@ export class HomeComponent implements OnInit {
           const caseIdUrl = UrlSplit[4].toString();
           if (caseIdUrl){
             this.fdecryptForm.caseId.setValue(caseIdUrl);
-            this.getCaseAndDecrypt(caseIdUrl);
+            // FIXME: CHANGED FROM GET CASE FROM SERVER TO OFFLINE DOM RETRIEVAL
+            /*this.getCaseAndDecrypt(caseIdUrl);*/
+            this.runDecryption(caseIdUrl);
           }else{
-
             // tslint:disable-next-line:max-line-length
             environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Patient Case Page') : alert('Error: Not GoData Case Page');
           }
@@ -98,6 +99,84 @@ export class HomeComponent implements OnInit {
       }
     } );
   }
+  /**
+   * Runs the decryption code, which include the retrieval of encrypted value from webpage,
+   * retrieval of license and the decryption of both license and case. And at last presenting them both in the extension and by
+   * injecting it onto the webpage.
+   * @returns Returns void
+   * @krunal
+   * @param caseId - string
+   */
+  runDecryption( caseId: string) {
+    const caseData = this.domManipulationService.getCaseFromDOM();
+    if (caseData != null) {
+      // CaseData retrieved --> Now get the license than decrypt and in last Inject to the page
+      // Step1. Get License
+      const decryptedLicense = this.getLicenseAndObtainSymmetricKey(caseId);
+      // Step2. Decrypt License and obtain symmetric key
+      if (decryptedLicense == null) {
+        this.openSnackBar('Error: Private key not valid and/or does not has permissions', 'Close', 'error-snackbar');
+        return;
+      }
+      // Step3. Obtain the case values from the webpage
+      const spCase = this.domManipulationService.getCaseFromDOM();
+      // Step4. Decrypt the case with the symmetric key
+      try {
+        const decryptedCase = this.decryptCaseFromLicense(decryptedLicense, spCase);
+        console.log('Decrypted Case', decryptedCase);
+        this.decryptedData = decryptedCase;
+        this.decryptedDataAvailable = true;
+
+      } catch (e) {
+        this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
+      }
+      // Step5. Inject the decrypted data to the webpage
+      this.domManipulationService.injectValues(this.injectionDecryptedData);
+    } else{
+    environment.isExtensionBuild ? this.alertChromeTab('Error: Could not read the page contents') : alert('Error: Could not read the page content');
+    }
+  }
+
+  /**
+   * Gets the license from the DRM server and returns the symmetric key by decrypting the
+   * license with the private key.
+   * @returns Returns the decrypted key else null on error!
+   * @krunal
+   * @param caseId - string
+   */
+  getLicenseAndObtainSymmetricKey(caseId: string): any {
+    const email = this.authenticationService.currentUserValue.email;
+    const privateKey = this.authenticationService.currentUserValue.privateKey;
+    // tslint:disable-next-line:max-line-length
+    this.caseService.getLicense(email, caseId).subscribe(
+      data => {
+        // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
+        console.log(data);
+        const encryptedLicense = data.license;
+        console.log(`Encrypted license: ${encryptedLicense}`);
+        let decryptedLicense;
+        try{
+          decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
+          // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
+          return decryptedLicense;
+        }catch (e) {
+          this.hasPermissions = false;
+          return null;
+          // tslint:disable-next-line:max-line-length
+          // environment.isExtensionBuild ? this.alertChromeTab('Error: Private Key Incorrect and/or format.') : alert('Error: Private Key Incorrect and/or format.');
+          // this.authenticationService.logout();
+        }
+      },
+      error => {
+        console.log(error);
+        this.openSnackBar(error.error.error.message, 'Close', 'error-snackbar');
+        return null;
+        // environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
+      }
+    );
+  }
+
+  // FIXME : DELETE!
   getCaseAndDecrypt(caseId) {
     const email = this.authenticationService.currentUserValue.email;
     const privateKey = this.authenticationService.currentUserValue.privateKey;
@@ -114,11 +193,11 @@ export class HomeComponent implements OnInit {
           // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
           try{
             // FIXME: CHANGE FROM data.spCase to offline DOM and get the case values from there
-            const decryptedCase = this.decryptCaseFields(decryptedLicense, data.spCase);
-            console.log('Decrypted Case', decryptedCase);
-            this.decryptedData = decryptedCase;
+            /*const decryptedCase = this.decryptCaseFields(decryptedLicense, data.spCase);*/
+            /*console.log('Decrypted Case', decryptedCase);
+            this.decryptedData = decryptedCase;*/
             this.decryptedDataAvailable = true;
-            this.injectValues(this.injectionDecryptedData);
+            this.domManipulationService.injectValues(this.injectionDecryptedData);
           }catch (e) {
             this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
             // environment.isExtensionBuild ? this.alertChromeTab('Error: License/Case are bad.') : alert('Error: License/Case are bad.');
@@ -138,118 +217,9 @@ export class HomeComponent implements OnInit {
       }
     );
   }
-  // Gets the case fields
-  getCaseDOMContent(){
-    const code = `(function getUrls(){
-    // Static fields
-    const firstName = document.querySelector('input[name="firstName"]')?.value;
-    const middleName = document.querySelector('input[name="middleName"]')?.value;
-    const lastName = document.querySelector('input[name="lastName"]')?.value;
-    // Documents and Identification types and Numbers
-    let documents = [];
-    let documentsAvailable = true;
-    let tempNumber = undefined; let tempType = undefined;
-    let i = 0;
-    let strHtmlNum = 'input[name="documents[0][number]"]';
-    let strHtmlType = 'mat-select[name="documents[0][type]"]';
-    while(documentsAvailable){
-      strHtmlNum = 'input[name="documents['+i+'][number]"]';
-      strHtmlType = 'mat-select[name="documents['+i+'][type]"]';
-      tempType = document.querySelector(strHtmlType)?.innerText;
-      tempNumber = document.querySelector(strHtmlNum)?.value;
-      if(tempType == undefined || tempNumber == undefined){
-        // No more documents in the current tab/go Data Case
-        documentsAvailable = false;
-      }else{
-        // Store the Type and Number in the Object
-        documents.push({type:tempType,number:tempNumber});
-      }
-      i=i+1;
-    }
-    // Addresses and PhoneNumber
-       // addresses[0][phoneNumber]
-       let addressesAvailable = true;
-       let addresses = [];
-       i = 0;
-       let strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'0][phoneNumber]"]';
-       let strHtmlAddressesType = 'mat-select[name="addresses[0][typeId]"]';
-       while(addressesAvailable){
-        strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'][phoneNumber]"]';
-        strHtmlAddressesType = 'mat-select[name="addresses['+i+'][typeId]"]';
-        tempType = document.querySelector(strHtmlAddressesType)?.innerText;
-        tempPhoneNumber = document.querySelector(strHtmlAddressesPhoneNumber)?.value;
-        if(tempPhoneNumber == undefined || tempType == undefined){
-          // No more Addresses PhoneNumbers in the current tab/go Data Case
-          addressesAvailable = false;
-        }else{
-          // Store the Type and Number in the Object
-          addresses.push({typeId:tempType,phoneNumber:tempPhoneNumber});
-        }
-        i=i+1;
-      }
-      return { firstName, middleName, lastName, documents, addresses };
-    })()`;
-    // @ts-ignore
-    chrome.tabs.executeScript(tabId, { code }, result => {
-      const caseData = result[0];
-
-      if ( caseData !== undefined ){
-        // case Data retrieved offline
-
-      }
-    });
 
 
-  }
-
-  openSnackBar(message: string, action: string, className: string) {
-    this.snackBar.open(message, action, {
-      duration: 9000,
-      verticalPosition: 'top',
-      horizontalPosition: 'center',
-      panelClass: [className],
-    });
-  }
-  alertChromeTab(message: string){
-    // @ts-ignore
-    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
-      const url = tabs[0].url;
-      console.log('url: ', url);
-      // @ts-ignore
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `alert("${message}");` });
-      // use `url` here inside the callback because it's asynchronous!
-    } );
-  }
-
-  injectValues(decryptedFields){
-    // @ts-ignore
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      console.log('tabs', tabs);
-      const url = tabs[0].url;
-      console.log('url: ', url);
-      // @ts-ignore
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `console.log("URL: ", "${url}");` }
-      );
-      // TODO : LOOP OVER ALL OF THE PROPERTIES IN DECRYPTED FIELD AND USE THAT TO INJECT THE VALUES ON THE GODATA PAGE
-
-      Object.keys(decryptedFields).forEach((key, index) => {
-        // key: the name of the object key
-        // index: the ordinal position of the key within the object
-         // REDO
-        // @ts-ignore First Name
-        chrome.tabs.executeScript(
-          tabs[0].id,
-          { code: `document.querySelector('input[name="${key}"]') ? document.querySelector('input[name="${key}"]').value="${decryptedFields[key]}":x=0;` }
-        );
-    });
-    } );
-  }
-
-  decryptCaseFields(symmetricKey: string, spCase: any): any{
+  decryptCaseFromLicense(symmetricKey: string, spCase: any): any{
 
     // TODO: Decrypt all of the fields found in the caseEncrypted, decrypt and return it!
     // tslint:disable-next-line:prefer-const
@@ -257,17 +227,17 @@ export class HomeComponent implements OnInit {
     const decryptedCaseNamed = {};
     // Decrypting
     environment.sensitiveData.forEach(sensitiveField => {
-      const subSensitiveField = sensitiveField.split(',');
-      console.log('subSensitiveField', subSensitiveField);
+      const sensitiveFieldArray = sensitiveField.split(',');
+      console.log('subSensitiveField', sensitiveFieldArray);
       // If there is a document we have address,phoneNumber
-      if (subSensitiveField.length === 1) {
+      if (sensitiveFieldArray.length === 1) {
         // If the beginning of the value is equal to /ENC/ we decrypt the field
         if (spCase[sensitiveField] != null) {
           // tslint:disable-next-line:triple-equals
           if (spCase[sensitiveField].substring(0, 5) == '/ENC/') {
-            const sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split('/');
+            const sensitiveFieldValueSplit = spCase[sensitiveFieldArray[0]].split('/');
             const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-            const encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue);
+            const encryptedFieldValue = spCase[sensitiveFieldArray[0]].substring(offsetEncryptedFieldValue);
             // let valueToDecrypt = spCase[sensitiveField].substring(42,) //from 42 because after /ENC/ we have the id of the creator
             // spCase[sensitiveField] = decryptedField
             // tslint:disable-next-line:max-line-length
@@ -284,34 +254,49 @@ export class HomeComponent implements OnInit {
         // Also applies for addresses, which might contain phone and addresses
         // let fieldObjectsLength = spCase[subSensitiveField[0]].length;
 
-          if (spCase[subSensitiveField[0]] != null) {
-            spCase[subSensitiveField[0]].forEach((spCaseSubObject: any, index: number) => {
-              console.log('subSensitiveField[0]', subSensitiveField[0]);
-              if (!(subSensitiveField[0] === 'documents' && spCaseSubObject.type.toString() !== 'LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID')) {
-                const sensitiveFieldValueSplit = spCaseSubObject[subSensitiveField[1]].split('/');
-                const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-                const encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue, );
-                if (sensitiveFieldValueSplit[1] === 'ENC') { // if is encrypted
-                  const decryptedField: string = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
-                  // spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
-                  if (subSensitiveField[0] === 'documents') {
-                    const documentTypeSplit = spCaseSubObject.type.split('_');
-                    const documentType: string = this.properFormatString(documentTypeSplit);
-                    decryptedCaseWithSensitiveFields[`documents[${index}][number]`] = decryptedField;
-                    decryptedCaseNamed[documentType] = decryptedField;
-
-                  } else {
-                    decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
-                    decryptedCaseNamed[subSensitiveField[1]] = decryptedField;
-                  }
-                }
+        if (spCase[sensitiveFieldArray[0]] != null) {
+          spCase[sensitiveFieldArray[0]].forEach((sensitiveDocument: any, index: number) => {
+            if (sensitiveDocument.type.toString() !== 'HASHID') {
+              const sensitiveDocumentValueSplitted = sensitiveDocument[sensitiveFieldArray[1]].split('/');
+              const offsetEncryptedFieldValue = sensitiveDocumentValueSplitted[1].length + sensitiveDocumentValueSplitted[2].length + 3;
+              const encryptedFieldValue = sensitiveDocument[sensitiveFieldArray[1]].substring(offsetEncryptedFieldValue, );
+              if (sensitiveDocumentValueSplitted[1] === 'ENC') { // if is encrypted
+                // Decrypt Field
+                const decryptedField: string = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
+                // Store the decrypted field as a object with field Type
+                decryptedCaseWithSensitiveFields[`${sensitiveFieldArray[0]}[${index}][${sensitiveFieldArray[1]}]`] = decryptedField;
+                decryptedCaseNamed[sensitiveFieldArray[1]] = decryptedField;
+                // spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
+                /*if (subSensitiveField[0] === 'documents') {
+                  const documentTypeSplit = spCaseSubObject.type.split('_');
+                  const documentType: string = this.properFormatString(documentTypeSplit);
+                  decryptedCaseWithSensitiveFields[`documents[${index}][number]`] = decryptedField;
+                  decryptedCaseNamed[documentType] = decryptedField;
+                } else {*/
+                /*}*/
               }
-            });
-          } else {
-            console.log(`${subSensitiveField[0]} is null, not decrypting this field!`);
-          }
+              // Else no Decryption Required
+            }
+          });
+        }
       }
     });
+    // @ts-ignore
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      console.log('tabs', tabs);
+      const url = tabs[0].url;
+      console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `console.log(${decryptedCaseWithSensitiveFields});` }
+      );
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `console.log(${decryptedCaseNamed});` }
+      );
+    } );
     this.injectionDecryptedData = decryptedCaseWithSensitiveFields;
     return decryptedCaseNamed;
   }
@@ -342,5 +327,27 @@ export class HomeComponent implements OnInit {
     else {
       environment.isExtensionBuild ? this.alertChromeTab('Error: caseId and Destination Hospital Require') : alert('Error: caseId and Destination Hospital Require');
     }
+  }
+
+  // Notifiers
+  openSnackBar(message: string, action: string, className: string) {
+    this.snackBar.open(message, action, {
+      duration: 9000,
+      verticalPosition: 'top',
+      horizontalPosition: 'center',
+      panelClass: [className],
+    });
+  }
+  alertChromeTab(message: string){
+    // @ts-ignore
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+      const url = tabs[0].url;
+      console.log('url: ', url);
+      // @ts-ignore
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        { code: `alert("${message}");` });
+      // use `url` here inside the callback because it's asynchronous!
+    } );
   }
 }
