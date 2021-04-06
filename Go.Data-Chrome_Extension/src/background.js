@@ -7,10 +7,7 @@ chrome.runtime.onInstalled.addListener(() => {
     });
   }, { url: [{ urlMatches: 'http://localhost:8000/cases/edf15df1-b89d-474c-b504-c7051a72d54b/view' }] });*/
 });
-chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(function(message, sender, _) {
   // Handle message.
-  // In this example, message === 'whatever value; String, object, whatever'
-  console.log('...Debugging...')
   console.log(message);
-  console.log('...End...')
 });
