@@ -1,5 +1,4 @@
-import { Injectable } from '@angular/core';
-import { environment } from '../environments/environment';
+import {Injectable} from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +14,7 @@ export class DomManipulationService {
    * @krunal
    */
   getCaseFromDOM(){
-    const code = `(function getUrls(){
+    const code = `(()=>{
     // Static fields
     const firstName = document.querySelector('input[name="firstName"]')?.value;
     const middleName = document.querySelector('input[name="middleName"]')?.value;
@@ -62,21 +61,18 @@ export class DomManipulationService {
         }
         i=i+1;
       }
+      //console.log("Obtained Log: ",{ firstName, middleName, lastName, documents, addresses });
       return { firstName, middleName, lastName, documents, addresses };
     })()`;
     // @ts-ignore
-    chrome.tabs.executeScript(tabId, { code }, result => {
-      const caseData = result[0];
-
-      if ( caseData !== undefined ){
-        // case Data retrieved offline
-        // Clean the caseData before finishing
-
-        return caseData;
-      }else{
-        return null;
-      }
-    });
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      // @ts-ignore
+      chrome.tabs.executeScript(tabs[0].id, { code }, (result) => {
+        console.log('Result on Execution');
+        console.log(result);
+        return result[0];
+      });
+    } );
   }
   /**
    * Injects the decrypted fields into the current tab of the extension.
@@ -86,7 +82,7 @@ export class DomManipulationService {
    */
   injectValues(decryptedFields){
     // @ts-ignore
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       console.log('tabs', tabs);
       const url = tabs[0].url;
       console.log('url: ', url);
