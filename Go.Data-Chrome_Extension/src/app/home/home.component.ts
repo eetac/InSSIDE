@@ -5,7 +5,8 @@ import {AuthenticationService} from 'src/services/authentication.service';
 import {CaseService} from 'src/services/case.service';
 import {CryptographyService} from 'src/services/cryptography.service';
 import {environment} from '../../environments/environment';
-import {MatSnackBar} from "@angular/material/snack-bar";
+import {MatSnackBar} from '@angular/material/snack-bar';
+
 /*import {MatSnackBar} from '@angular/material/snack-bar';*/
 
 @Component({
@@ -86,8 +87,8 @@ export class HomeComponent implements OnInit {
             this.getCaseAndDecrypt(caseIdUrl);
           }else{
 
+            // tslint:disable-next-line:max-line-length
             environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Patient Case Page') : alert('Error: Not GoData Case Page');
-
           }
         }else{
           environment.isExtensionBuild ? this.alertChromeTab('Error: Not GoData Patient Case Page') : alert('Error: Not GoData Case Page');
@@ -112,6 +113,7 @@ export class HomeComponent implements OnInit {
           decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
           // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
           try{
+            // FIXME: CHANGE FROM data.spCase to offline DOM and get the case values from there
             const decryptedCase = this.decryptCaseFields(decryptedLicense, data.spCase);
             console.log('Decrypted Case', decryptedCase);
             this.decryptedData = decryptedCase;
@@ -136,6 +138,70 @@ export class HomeComponent implements OnInit {
       }
     );
   }
+  // Gets the case fields
+  getCaseDOMContent(){
+    const code = `(function getUrls(){
+    // Static fields
+    const firstName = document.querySelector('input[name="firstName"]')?.value;
+    const middleName = document.querySelector('input[name="middleName"]')?.value;
+    const lastName = document.querySelector('input[name="lastName"]')?.value;
+    // Documents and Identification types and Numbers
+    let documents = [];
+    let documentsAvailable = true;
+    let tempNumber = undefined; let tempType = undefined;
+    let i = 0;
+    let strHtmlNum = 'input[name="documents[0][number]"]';
+    let strHtmlType = 'mat-select[name="documents[0][type]"]';
+    while(documentsAvailable){
+      strHtmlNum = 'input[name="documents['+i+'][number]"]';
+      strHtmlType = 'mat-select[name="documents['+i+'][type]"]';
+      tempType = document.querySelector(strHtmlType)?.innerText;
+      tempNumber = document.querySelector(strHtmlNum)?.value;
+      if(tempType == undefined || tempNumber == undefined){
+        // No more documents in the current tab/go Data Case
+        documentsAvailable = false;
+      }else{
+        // Store the Type and Number in the Object
+        documents.push({type:tempType,number:tempNumber});
+      }
+      i=i+1;
+    }
+    // Addresses and PhoneNumber
+       // addresses[0][phoneNumber]
+       let addressesAvailable = true;
+       let addresses = [];
+       i = 0;
+       let strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'0][phoneNumber]"]';
+       let strHtmlAddressesType = 'mat-select[name="addresses[0][typeId]"]';
+       while(addressesAvailable){
+        strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'][phoneNumber]"]';
+        strHtmlAddressesType = 'mat-select[name="addresses['+i+'][typeId]"]';
+        tempType = document.querySelector(strHtmlAddressesType)?.innerText;
+        tempPhoneNumber = document.querySelector(strHtmlAddressesPhoneNumber)?.value;
+        if(tempPhoneNumber == undefined || tempType == undefined){
+          // No more Addresses PhoneNumbers in the current tab/go Data Case
+          addressesAvailable = false;
+        }else{
+          // Store the Type and Number in the Object
+          addresses.push({typeId:tempType,phoneNumber:tempPhoneNumber});
+        }
+        i=i+1;
+      }
+      return { firstName, middleName, lastName, documents, addresses };
+    })()`;
+    // @ts-ignore
+    chrome.tabs.executeScript(tabId, { code }, result => {
+      const caseData = result[0];
+
+      if ( caseData !== undefined ){
+        // case Data retrieved offline
+
+      }
+    });
+
+
+  }
+
   openSnackBar(message: string, action: string, className: string) {
     this.snackBar.open(message, action, {
       duration: 9000,
@@ -169,15 +235,16 @@ export class HomeComponent implements OnInit {
         { code: `console.log("URL: ", "${url}");` }
       );
       // TODO : LOOP OVER ALL OF THE PROPERTIES IN DECRYPTED FIELD AND USE THAT TO INJECT THE VALUES ON THE GODATA PAGE
-      Object.keys(decryptedFields).forEach(function(key,index) {
+
+      Object.keys(decryptedFields).forEach((key, index) => {
         // key: the name of the object key
-        // index: the ordinal position of the key within the object 
-         // REDO 
-      // @ts-ignore First Name
-      chrome.tabs.executeScript(
-        tabs[0].id,
-        { code: `document.querySelector('input[name="${key}"]') ? document.querySelector('input[name="${key}"]').value="${decryptedFields[key]}":x=0;` }
-      );
+        // index: the ordinal position of the key within the object
+         // REDO
+        // @ts-ignore First Name
+        chrome.tabs.executeScript(
+          tabs[0].id,
+          { code: `document.querySelector('input[name="${key}"]') ? document.querySelector('input[name="${key}"]').value="${decryptedFields[key]}":x=0;` }
+        );
     });
     } );
   }
@@ -187,7 +254,7 @@ export class HomeComponent implements OnInit {
     // TODO: Decrypt all of the fields found in the caseEncrypted, decrypt and return it!
     // tslint:disable-next-line:prefer-const
     let decryptedCaseWithSensitiveFields = {};
-    let decryptedCaseNamed = {};
+    const decryptedCaseNamed = {};
     // Decrypting
     environment.sensitiveData.forEach(sensitiveField => {
       const subSensitiveField = sensitiveField.split(',');
@@ -229,10 +296,10 @@ export class HomeComponent implements OnInit {
                   // spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
                   if (subSensitiveField[0] === 'documents') {
                     const documentTypeSplit = spCaseSubObject.type.split('_');
-                    const documentType:string = this.properFormatString(documentTypeSplit);
+                    const documentType: string = this.properFormatString(documentTypeSplit);
                     decryptedCaseWithSensitiveFields[`documents[${index}][number]`] = decryptedField;
                     decryptedCaseNamed[documentType] = decryptedField;
-                    
+
                   } else {
                     decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
                     decryptedCaseNamed[subSensitiveField[1]] = decryptedField;
@@ -248,12 +315,11 @@ export class HomeComponent implements OnInit {
     this.injectionDecryptedData = decryptedCaseWithSensitiveFields;
     return decryptedCaseNamed;
   }
-  properFormatString(textToFormat: Array<string>):string {
-    let textFormatted: string = "";
+  properFormatString(textToFormat: Array<string>): string {
+    const textFormatted = '';
     /* let text1 = textToFormat.splice(6, textToFormat.length - 1).join(''); */
-    let textArr1 = textToFormat.splice(6, textToFormat.length - 1);
-    let text2 = textArr1.join(' ');
-    return text2;
+    const textArr1 = textToFormat.splice(6, textToFormat.length - 1);
+    return textArr1.join(' ');
   }
   shareAccessToHospitals(){
     if ((this.fdecryptForm.caseId.value !== '') && (this.ftransferForm.emailToTransfer.value !== '')) {
