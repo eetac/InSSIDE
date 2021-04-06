@@ -33,7 +33,7 @@ function encryptCases(cases:any): Promise<IResult>{
             let creatorInstitute = institute.splice(6,institute.length-1).join('');*/
             let createdBy = await goDataHelper.getInstituteCreator(cases[i].createdBy);
             let cip:string;
-            console.log("STEP1 --> Institution CREATOR: " + createdBy.creatorInstitute)
+            console.log("STEP1 --> hospitalName CREATOR: " + createdBy.hospitalName)
             let encryptionKey = crypto.randomFillSync(Buffer.alloc(32)).toString('base64');
             let iv = crypto.randomBytes(config.IV_LENGTH);
             console.log("STEP2 --> ENCRYPTION KEY: " + encryptionKey)
@@ -56,7 +56,7 @@ function encryptCases(cases:any): Promise<IResult>{
                             let encryptedField: String = symmetricCipher.encryptSymmetric(cases[i][sensitiveField], encryptionKey,iv);
                             console.log("Encrypted Val: "+encryptedField);
                             /*console.log(encryptedField);*/
-                            cases[i][sensitiveField] = "/ENC/" + createdBy.creatorInstitute + "/" + encryptedField;
+                            cases[i][sensitiveField] = "/ENC/" + createdBy.hospitalName + "/" + encryptedField;
                         }
                     }else{
                         console.log(`${sensitiveField}: is null, not encrypting`);
@@ -70,10 +70,10 @@ function encryptCases(cases:any): Promise<IResult>{
                     /*let fieldObjectsLength = ;*/
                     if(cases[i][subSensitiveField[0]]!=null){
                         for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
-                            //Cannot Encrypt Other Document as this contains the CIP HASH!
-                            if (subSensitiveField[0] === "documents" && cases[i][subSensitiveField[0]][k]["type"].toString() !== config.DOCUMENT_HASH) {
+                            //Skip this field in the case, as this case already has hash
+                            if (cases[i][subSensitiveField[0]][k]["type"].toString() !== config.DOCUMENT_HASH) {
                                 let subField:string  = subSensitiveField[1];
-                                if(subSensitiveField[0] == "documents"){
+                                if(subSensitiveField[0] === "documents"){
                                     subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
                                     if(cases[i][subSensitiveField[0]][k]["type"].toString() ==="LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP")
                                     {   cip = cases[i][subSensitiveField[0]][k]["number"];
@@ -82,11 +82,10 @@ function encryptCases(cases:any): Promise<IResult>{
                                 }
                                 console.log(`${subField}: ${cases[i][subSensitiveField[0]][k][subSensitiveField[1]]}`);
                                 if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
-                                    fieldsModified = 1; //SetModified
                                     let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
                                     let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey, iv);
-                                    /*console.log(encryptedField)*/
-                                    cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + createdBy.creatorInstitute + "/" + encryptedField
+                                    cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + createdBy.hospitalName + "/" + encryptedField
+                                    fieldsModified = 1; //SetModified
                                 }
                             }
                         }
@@ -101,7 +100,9 @@ function encryptCases(cases:any): Promise<IResult>{
                 // we don't want to update case, if the key is not saved. As impossible to recover...
                 // Only update if key encryption didn't fail --> await this.updateCase(cases[i]);
                 console.log("Entered Update Case and Insertion License");
-                let keys;
+                let keys: {
+                    usedKey: string; userGoDataId: any; email: any;
+                }[];
                 //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
                 User.findOne({ email: config.USER }).then((managerUser)=>{
                     /* console.log("managerUser: "+managerUser); */
@@ -141,16 +142,16 @@ function encryptCases(cases:any): Promise<IResult>{
                                     //Hospital, if the hospital does exist in our DB we also save for it THE LICENSE!
                                     keys = [
                                         {
-                                            /*institutionName : creatorInstitute,*/
-                                            usedKey         : keyEncrypted2,
-                                            userGoDataId    : cases[i].createdBy,
-                                            email           : createdBy.email
-                                        },
-                                        {
                                             /*institutionName : config.INSTITUTION,*/
                                             usedKey         : keyEncrypted,
                                             userGoDataId    : config.USERGODATAID,
                                             email           : config.USER
+                                        },
+                                        {
+                                            /*institutionName : creatorInstitute,*/
+                                            usedKey         : keyEncrypted2,
+                                            userGoDataId    : cases[i].createdBy,
+                                            email           : createdBy.email
                                         }
                                     ];
                                 }else{

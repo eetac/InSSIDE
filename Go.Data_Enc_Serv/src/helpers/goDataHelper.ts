@@ -57,13 +57,16 @@ function getInstituteCreator(idCreator: string):Promise<any>{
         let id: string = idCreator;//req.params.hashCase;
         auth().then((token)=>{
             const url: string = `${config.URL}/users/${id}?access_token=${token}`;
+            
             httpHelper.doGet(url).then((res)=>{
                 let user = JSON.parse(res);
                 let institute = user.institutionName.split("_");
                 let nameInstitute = institute.splice(6,institute.length-1).join('');
+                const hospitalName = user.email.split('@')[1].split('.')[0];
                 let createdBy = {
                     creatorInstitute    :   nameInstitute,
-                    email               :   user.email
+                    email               :   user.email,
+                    hospitalName        :   hospitalName
                 };
                 return resolve(createdBy);
             }).catch((err:any)=>{
@@ -74,7 +77,35 @@ function getInstituteCreator(idCreator: string):Promise<any>{
         });
     });
 }
-
+/* "id": "83704f2c-2e24-449f-b510-466e20bf5118",
+"firstName": "User",
+"lastName": "1",
+"roleIds": [
+  "ROLE_CONTACT_OF_CONTACT_MANAGER",
+  "ROLE_CONTACT_TRACER",
+  "ROLE_CONTACT_TRACING_COORDINATOR",
+  "ROLE_REPORTS_AND_DATA_VIEWER",
+  "ROLE_EPIDEMIOLOGIST",
+  "ROLE_GO_DATA_ADMINISTRATOR"
+],
+"activeOutbreakId": "12b593e4-6de2-4cbd-a4be-464f55bf57e0",
+"languageId": "english_us",
+"passwordChange": false,
+"institutionName": "LNG_REFERENCE_DATA_CATEGORY_INSTITUTION_NAME_SALUT",
+"telephoneNumbers": {
+  "LNG_USER_FIELD_LABEL_PRIMARY_TELEPHONE": "admin@who.int"
+},
+"loginRetriesCount": 0,
+"lastLoginDate": null,
+"disregardGeographicRestrictions": false,
+"dontCacheFilters": false,
+"email": "user1@santjoan.com",
+"createdAt": "2021-04-06T09:52:56.920Z",
+"createdBy": "sys_admin",
+"updatedAt": "2021-04-06T21:40:34.891Z",
+"updatedBy": "system",
+"deleted": false,
+"createdOn": "API", */
 function getGoDataUserId(email:string,password:string):Promise<string>{
     return new Promise((resolve,reject )=> {
         // Step1. Authenticate GoData with email & password
