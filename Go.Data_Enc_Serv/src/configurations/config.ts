@@ -3,7 +3,7 @@
 import {IConfig} from "../Interfaces/interface";
 
 const config:IConfig = {
-    URL             :   "http://localhost:3000/api", //Go Data URI
+    URL             :   "http://localhost:80/api", //Go Data URI
     IV_LENGTH       :   16, // Minimum Length 16 IV
     saltRounds      :   10, // Hash Function Rounds, recommended for security at least 10
     USER            :   "encryption@local.com",

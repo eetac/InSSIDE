@@ -63,30 +63,34 @@ function encryptCases(cases:any): Promise<IResult>{
                     }
                 }
                 else { //had sensitiveField configured in config with internal subfields of the objects stored in a array
-                    let subSensitiveField = sensitiveField.split(",");
+                    let subSensitiveField = sensitiveField.split(',');
                     // Documents which contains a list of documents such as nationality, archived_id etc, so
                     // need to go over each document and encrypt the number of that document which we want to protect
                     // Also applies for addresses, which might contain phone and addresses
                     /*let fieldObjectsLength = ;*/
                     if(cases[i][subSensitiveField[0]]!=null){
                         for(let k=0; k<cases[i][subSensitiveField[0]].length; k++){
-                            //Skip this field in the case, as this case already has hash
-                            if (cases[i][subSensitiveField[0]][k]["type"].toString() !== config.DOCUMENT_HASH) {
-                                let subField:string  = subSensitiveField[1];
-                                if(subSensitiveField[0] === "documents"){
+                            // Only Documents
+                            console.log("Subsensitive",subSensitiveField[0]);
+                            if(subSensitiveField[0].toString() === "documents"){
+                                if (cases[i][subSensitiveField[0]][k]["type"].toString() !== config.DOCUMENT_HASH) {
+                                    let subField:string  = subSensitiveField[1];
                                     subField = cases[i][subSensitiveField[0]][k]["type"].split("_")[6];
                                     if(cases[i][subSensitiveField[0]][k]["type"].toString() ==="LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP")
                                     {   cip = cases[i][subSensitiveField[0]][k]["number"];
-                                        console.log("Assigned CIP For HASH: "+cip);
+                                        console.log("Assigned CIP For HASH: " + cip);
                                     }
+                                    console.log(`${subField}: ${cases[i][subSensitiveField[0]][k][subSensitiveField[1]]}`);
+                                }else{
+                                    // Jump iteration if current document type is Hash!
+                                    continue;
                                 }
-                                console.log(`${subField}: ${cases[i][subSensitiveField[0]][k][subSensitiveField[1]]}`);
-                                if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
-                                    let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
-                                    let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey, iv);
-                                    cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + createdBy.hospitalName + "/" + encryptedField
-                                    fieldsModified = 1; //SetModified
-                                }
+                            }
+                            if (cases[i][subSensitiveField[0]][k][subSensitiveField[1]].substring(0, 5) != "/ENC/") { //if is not encrypted
+                                let fieldNeededEncryption = cases[i][subSensitiveField[0]][k][subSensitiveField[1]];
+                                let encryptedField: String = symmetricCipher.encryptSymmetric(fieldNeededEncryption, encryptionKey, iv);
+                                cases[i][subSensitiveField[0]][k][subSensitiveField[1]] = "/ENC/" + createdBy.hospitalName + "/" + encryptedField
+                                fieldsModified = 1; //SetModified
                             }
                         }
                     }else{
@@ -109,26 +113,24 @@ function encryptCases(cases:any): Promise<IResult>{
                     if(managerUser!=null){
                         // Now hash the CIP, as this will provide the merge capability between same cases from different hospital
                         // without needing to decrypt the actual information of the patient/case
-                        let positionCIP = 0;
-                        let cipExists:boolean = false;
+                    
                         /* while (cases[i]["documents"][positionCIP]["type"] != "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP") {
                             positionCIP = positionCIP + 1;
                             if(positionCIP== cases[i]["documents"].length){
                                 console.log( `Case not encrypted, need to provide valid CIP for case: ${cases[i]["id"]}`);
                             }
                         } */
-                        for(let docuIndex=0; docuIndex<cases[i]["documents"].length; docuIndex++){
+                        /* for(let docuIndex=0; docuIndex<cases[i]["documents"].length; docuIndex++){
                             if(cases[i]["documents"][docuIndex]["type"] == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP"){
                                 cipExists = true;
                                 console.log("CIP check: "+cip);
                                 positionCIP = docuIndex;
-                                /* console.log("...............CIP FOUND........................."); */
+                            
                                 break;
                             }
-                        }
-                        if(cipExists){
-                            let fullFieldsToHash = cip;
-                            let DOCUMENT_HASH = crypto.createHash('md5').update(fullFieldsToHash).digest("hex");
+                        } */
+                        if(cip !== undefined){
+                            let DOCUMENT_HASH = crypto.createHash('md5').update(cip).digest("hex");
                             cases[i]["documents"][cases[i]["documents"].length] = {
                                 "type": config.DOCUMENT_HASH,
                                 "number": DOCUMENT_HASH
