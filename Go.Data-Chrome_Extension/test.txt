@@ -1,0 +1,47 @@
+"(()=>{
+        // Static fields
+        const firstName = document.querySelector('input[name="firstName"]')?.value;
+        const middleName = document.querySelector('input[name="middleName"]')?.value;
+        const lastName = document.querySelector('input[name="lastName"]')?.value;
+        // Documents and Identification types and Numbers
+        let documents = [];
+        let documentsAvailable = true;
+        let tempNumber = undefined; let tempType = undefined;
+        let i = 0;
+        let strHtmlNum = 'input[name="documents[0][number]"]';
+        let strHtmlType = 'mat-select[name="documents[0][type]"]';
+        while(documentsAvailable){
+          strHtmlNum = 'input[name="documents['+i+'][number]"]';
+          strHtmlType = 'mat-select[name="documents['+i+'][type]"]';
+          tempType = document.querySelector(strHtmlType)?.innerText;
+          tempNumber = document.querySelector(strHtmlNum)?.value;
+          if(tempType == undefined || tempNumber == undefined){
+            // No more documents in the current tab/go Data Case
+            documentsAvailable = false;
+          }else{
+            // Store the Type and Number in the Object
+            documents.push({type:tempType.replace(/\s/g, ''),number:tempNumber});
+          }
+          i=i+1;
+        }
+        // Addresses and PhoneNumber
+           // addresses[#Num][phoneNumber]
+           let addressesAvailable = true;
+           let addresses = [];
+           i = 0;
+           let strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'0][phoneNumber]"]';
+           while(addressesAvailable){
+            strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'][phoneNumber]"]';
+            tempNumber = document.querySelector(strHtmlAddressesPhoneNumber)?.value;
+            if(tempNumber){
+              // Store the Type and Number in the Addresses
+              addresses.push({type:'phoneNumber',phoneNumber: tempNumber});
+            }else{
+              // No more Addresses PhoneNumbers in the current chrome-tab and/or go-Data Case
+              addressesAvailable = false;
+            }
+            i=i+1;
+          }
+          const quer = { firstName, middleName, lastName, documents, addresses };
+          return quer ;
+        })()"

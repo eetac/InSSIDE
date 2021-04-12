@@ -473,5 +473,6 @@ function decryptCases(email:string,hashId:string): Promise<IResult>{
 export default {
   encryptCases,
   encryptCase,
+  updateCase
   /*decryptCases*/
 };

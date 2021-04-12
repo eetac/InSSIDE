@@ -109,7 +109,7 @@ export class HomeComponent implements OnInit {
       // @ts-ignore
       // tslint:disable-next-line:only-arrow-functions
       chrome.runtime.sendMessage({PromiseResultGetCaseFromDOM: caseData}, function(response) {});
-      if (caseData != null) {
+      if (caseData) {
         // CaseData retrieved --> Now get the license than decrypt and in last Inject to the page
         // Step1. Get License and Decrypt the license to obtain symmetric key
         this.getLicenseAndObtainSymmetricKey(caseId).then((decryptedLicense) => {
@@ -122,6 +122,9 @@ export class HomeComponent implements OnInit {
             this.decryptedData = decryptedCase;
             this.decryptedDataAvailable = true;
           } catch (e) {
+            
+            // @ts-ignore
+            chrome.runtime.sendMessage({runDecryption: e}, function(response) {});
             this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
           }
           // Step4. Inject the decrypted data to the webpage
@@ -240,6 +243,7 @@ export class HomeComponent implements OnInit {
     this.injectionDecryptedData = decryptedCaseWithSensitiveFields;
     return decryptedCaseNamed;
   }
+  
   properFormatString(textToFormat: Array<string>): string {
     const textFormatted = '';
     /* let text1 = textToFormat.splice(6, textToFormat.length - 1).join(''); */
