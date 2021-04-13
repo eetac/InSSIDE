@@ -60,7 +60,7 @@ export class DomManipulationService {
                 strHtmlNum = 'input[name="addresses['+i+'][${sensitiveFieldArray[1]}]"]';
                 tempNumber = document.querySelector(strHtmlNum)?.value;
                 if(tempNumber){
-                  addresses.push({type:'${sensitiveFieldArray[1]}',number:tempNumber});
+                  addresses.push({type:'${sensitiveFieldArray[1]}',${sensitiveFieldArray[1]}:tempNumber});
                 }else{
                   addressesAvailable = false;
                 }
@@ -93,77 +93,52 @@ export class DomManipulationService {
       } );
     });
   }
-  /* const code = `(()=>{
-      // Static fields
-      const firstName = document.querySelector('input[name="firstName"]')?.value;
-      const middleName = document.querySelector('input[name="middleName"]')?.value;
-      const lastName = document.querySelector('input[name="lastName"]')?.value;
-      // Documents and Identification types and Numbers
-      let documents = [];
-      let documentsAvailable = true;
-      let tempNumber = undefined; let tempType = undefined;
-      let i = 0;
-      let strHtmlNum = 'input[name="documents[0][number]"]';
-      let strHtmlType = 'mat-select[name="documents[0][type]"]';
-      while(documentsAvailable){
-        strHtmlNum = 'input[name="documents['+i+'][number]"]';
-        strHtmlType = 'mat-select[name="documents['+i+'][type]"]';
-        tempType = document.querySelector(strHtmlType)?.innerText;
-        tempNumber = document.querySelector(strHtmlNum)?.value;
-        if(tempType == undefined || tempNumber == undefined){
-          // No more documents in the current tab/go Data Case
-          documentsAvailable = false;
-        }else{
-          // Store the Type and Number in the Object
-          documents.push({type:tempType.replace(/\\s/g, ''),number:tempNumber});
-        }
-        i=i+1;
-      }
-      // Addresses and PhoneNumber
-         // addresses[#Num][phoneNumber]
-         let addressesAvailable = true;
-         let addresses = [];
-         i = 0;
-         let strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'0][phoneNumber]"]';
-         while(addressesAvailable){
-          strHtmlAddressesPhoneNumber = 'input[name="addresses['+i+'][phoneNumber]"]';
-          tempNumber = document.querySelector(strHtmlAddressesPhoneNumber)?.value;
-          if(tempNumber){
-            // Store the Type and Number in the Addresses
-            addresses.push({type:'phoneNumber',phoneNumber: tempNumber});
-          }else{
-            // No more Addresses PhoneNumbers in the current chrome-tab and/or go-Data Case
-            addressesAvailable = false;
-          }
-          i=i+1;
-        }
-        return { firstName, middleName, lastName, documents, addresses };
-      })()`; */
 
   /**
    * Injects the decrypted fields into the current tab of the extension.
    * @returns Returns nothing.
    * @krunal
-   * @param decryptedFields - Object{'firstName', 'middleName', 'lastName', 'documents,number', 'addresses,phoneNumber'}
+   * @param decryptedCase - Object{'firstName', 'middleName', 'lastName', 'cip', 'phoneNumber'}
    */
-  injectValues(decryptedFields: any){
+  injectValues(decryptedCase: any){
+    let code:string = `
+    let documentSelector;
+    `;
+    environment.sensitiveData.forEach(sensitiveField => {
+      const sensitiveFieldArray = sensitiveField.split(',');
+      // If there is a document we have address,phoneNumber
+      if (sensitiveFieldArray.length === 1) {
+        // If the beginning of the value is equal to /ENC/ we decrypt the field
+        if (decryptedCase[sensitiveField]) {
+          // tslint:disable-next-line:triple-equals
+          let codeSingleField = `
+          document.querySelector('input[name="${sensitiveField}"]').value = '${decryptedCase[sensitiveField]}';
+          `;
+          code = code + codeSingleField;
+        }
+      } else if (sensitiveFieldArray.length === 2) {
+        if (decryptedCase[`${sensitiveFieldArray[0]}`]) {
+          decryptedCase[`${sensitiveFieldArray[0]}`].forEach((sensitiveDocument: any, index: number) => {
+            let codeMultipleField = `
+            documentSelector = 'input[name="${sensitiveFieldArray[0]}[${index}][${sensitiveFieldArray[1]}]"]';
+            tempNumber = document.querySelector(documentSelector).value = '${sensitiveDocument[sensitiveFieldArray[1]]}';
+            `
+            code = code + codeMultipleField;
+          });
+        }
+      }
+    });
+    code = `(function (){${code}})();`;
+    // @ts-ignore
+    chrome.runtime.sendMessage( {code}, function(_: any) {});
     // @ts-ignore
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any) => {
-      const url = tabs[0].url;
-      // @ts-ignore
-      // tslint:disable-next-line:only-arrow-functions
-      chrome.runtime.sendMessage({URL: url}, function(_: any) {});
-      // TODO : LOOP OVER ALL OF THE PROPERTIES IN DECRYPTED FIELD AND USE THAT TO INJECT THE VALUES ON THE GODATA PAGE
-      Object.keys(decryptedFields).forEach((key, _) => {
-        // key: the name of the object key
-        // index: the ordinal position of the key within the object
-        // REDO
-        // @ts-ignore First Name
-        chrome.tabs.executeScript(
-          tabs[0].id,
-          { code: `document.querySelector('input[name="${key}"]') ? document.querySelector('input[name="${key}"]').value="${decryptedFields[key]}":x=0;` }
-        );
-      });
+      if(tabs){
+        // @ts-ignore
+        chrome.tabs.executeScript(tabs[0].id, {code}, (_: any) => {
+          return true;
+        });
+      }
     } );
   };
 }

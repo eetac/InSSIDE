@@ -58,7 +58,11 @@ export class HomeComponent implements OnInit {
 
   decryptCase(){
     if (this.fdecryptForm.caseId.value !== '' ) {
-      this.runDecryption(this.fdecryptForm.caseId.value);
+      if(this.injectionDecryptedData || this.decryptedData ){
+        this.reload();
+      }else{
+        this.runDecryption(this.fdecryptForm.caseId.value);
+      }
     }else{
       environment.isExtensionBuild ? this.alertChromeTab('caseId Required') : alert('CaseId Required');
     }
@@ -120,7 +124,7 @@ export class HomeComponent implements OnInit {
             // tslint:disable-next-line:only-arrow-functions
             chrome.runtime.sendMessage({decryptedCase}, function(response) {});
             this.decryptedData = decryptedCase;
-            this.decryptedDataAvailable = true;
+            this.reload();
           } catch (e) {
             
             // @ts-ignore
@@ -153,18 +157,18 @@ export class HomeComponent implements OnInit {
           // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
           // @ts-ignore
           // tslint:disable-next-line:only-arrow-functions
-          chrome.runtime.sendMessage({caseService : data}, function(response) {});
+          chrome.runtime.sendMessage({caseService : data}, function(_:any) {});
           const encryptedLicense = data.license;
           console.log(`Encrypted license: ${encryptedLicense}`);
-          let decryptedLicense;
+          let decryptedLicense:string;
           try{
             // @ts-ignore
             // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage({privateKey}, function(response) {});
+            chrome.runtime.sendMessage({privateKey}, function(_:any) {});
             decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
             // @ts-ignore
             // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage({decryptedLicense}, function(response) {});
+            chrome.runtime.sendMessage({decryptedLicense}, function(_:any) {});
             // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
             return resolve( decryptedLicense);
           }catch (e) {
@@ -183,7 +187,10 @@ export class HomeComponent implements OnInit {
     });
   }
 
-
+  private reload() {
+    setTimeout(() => this.decryptedDataAvailable = false);
+    setTimeout(() => this.decryptedDataAvailable = true);
+}
   decryptCaseFromLicense(symmetricKey: string, spCase: any): any{
 
     // TODO: Decrypt all of the fields found in the caseEncrypted, decrypt and return it!
@@ -193,21 +200,20 @@ export class HomeComponent implements OnInit {
     // Decrypting
     environment.sensitiveData.forEach(sensitiveField => {
       const sensitiveFieldArray = sensitiveField.split(',');
-      console.log('subSensitiveField', sensitiveFieldArray);
       // If there is a document we have address,phoneNumber
       if (sensitiveFieldArray.length === 1) {
         // If the beginning of the value is equal to /ENC/ we decrypt the field
         if (spCase[sensitiveField] != null) {
           // tslint:disable-next-line:triple-equals
-          if (spCase[sensitiveField].substring(0, 5) == '/ENC/') {
+          if (spCase[sensitiveField].substring(0, 5) === '/ENC/') {
             const sensitiveFieldValueSplit = spCase[sensitiveFieldArray[0]].split('/');
             const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
             const encryptedFieldValue = spCase[sensitiveFieldArray[0]].substring(offsetEncryptedFieldValue);
             // let valueToDecrypt = spCase[sensitiveField].substring(42,) //from 42 because after /ENC/ we have the id of the creator
             // spCase[sensitiveField] = decryptedField
             // tslint:disable-next-line:max-line-length
-            decryptedCaseWithSensitiveFields[sensitiveField] = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
-            decryptedCaseNamed[sensitiveField] =  decryptedCaseWithSensitiveFields[sensitiveField];
+            spCase[sensitiveField] = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
+            decryptedCaseNamed[sensitiveField] =  spCase[sensitiveField];
           }
         } else {
           console.log(`${sensitiveField} is null, not decrypting this field!`);
@@ -221,16 +227,17 @@ export class HomeComponent implements OnInit {
 
         if (spCase[sensitiveFieldArray[0]] != null) {
           spCase[sensitiveFieldArray[0]].forEach((sensitiveDocument: any, index: number) => {
-            if (sensitiveDocument.type.toString() !== 'HASHID') {
-              const sensitiveDocumentValueDisjoint = sensitiveDocument[sensitiveFieldArray[1]].split('/');
+            const sensitiveDocumentValueDisjoint = sensitiveDocument[sensitiveFieldArray[1]].split('/');
+            if(sensitiveDocumentValueDisjoint.length=3){
               const offsetEncryptedFieldValue = sensitiveDocumentValueDisjoint[1].length + sensitiveDocumentValueDisjoint[2].length + 3;
               const encryptedFieldValue = sensitiveDocument[sensitiveFieldArray[1]].substring(offsetEncryptedFieldValue, );
               if (sensitiveDocumentValueDisjoint[1] === 'ENC') { // if is encrypted
                 // Decrypt Field
                 const decryptedField: string = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
                 // Store the decrypted field as a object with field Type
-                decryptedCaseWithSensitiveFields[`${sensitiveFieldArray[0]}[${index}][${sensitiveFieldArray[1]}]`] = decryptedField;
-                decryptedCaseNamed[sensitiveFieldArray[1]] = decryptedField;
+                spCase[sensitiveFieldArray[0]][index][sensitiveFieldArray[1]] = decryptedField;
+                /* decryptedCaseWithSensitiveFields[`${sensitiveFieldArray[0]}[${index}][${sensitiveFieldArray[1]}]`] = decryptedField; */
+                decryptedCaseNamed[`${sensitiveDocument['type']}`] = decryptedField;
               }
             }
           });
@@ -240,10 +247,10 @@ export class HomeComponent implements OnInit {
     // @ts-ignore
     // tslint:disable-next-line:only-arrow-functions max-line-length
     chrome.runtime.sendMessage( {decryptedCaseWithSensitiveFields, decryptedCaseNamed }, function(_) {});
-    this.injectionDecryptedData = decryptedCaseWithSensitiveFields;
+    this.injectionDecryptedData = spCase;
     return decryptedCaseNamed;
   }
-  
+
   properFormatString(textToFormat: Array<string>): string {
     const textFormatted = '';
     /* let text1 = textToFormat.splice(6, textToFormat.length - 1).join(''); */
