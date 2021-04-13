@@ -120,15 +120,18 @@ export class HomeComponent implements OnInit {
           // Step3. Decrypt the case with the symmetric key
           try {
             const decryptedCase = this.decryptCaseFromLicense(decryptedLicense, caseData);
+            if(decryptedCase){
+              if(Object.keys(decryptedCase).length!==0){
+                // @ts-ignore
+                // tslint:disable-next-line:only-arrow-functions
+                chrome.runtime.sendMessage({decryptedCase}, function(_: any) {});
+                this.decryptedData = decryptedCase;
+                this.reload();
+              }
+            }
+          } catch (err) {
             // @ts-ignore
-            // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage({decryptedCase}, function(response) {});
-            this.decryptedData = decryptedCase;
-            this.reload();
-          } catch (e) {
-            
-            // @ts-ignore
-            chrome.runtime.sendMessage({runDecryption: e}, function(response) {});
+            chrome.runtime.sendMessage({runDecryption: err.message}, function(_: any) {});
             this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
           }
           // Step4. Inject the decrypted data to the webpage
@@ -203,9 +206,10 @@ export class HomeComponent implements OnInit {
       // If there is a document we have address,phoneNumber
       if (sensitiveFieldArray.length === 1) {
         // If the beginning of the value is equal to /ENC/ we decrypt the field
-        if (spCase[sensitiveField] != null) {
+        if (spCase[sensitiveField]) {
           // tslint:disable-next-line:triple-equals
-          if (spCase[sensitiveField].substring(0, 5) === '/ENC/') {
+          const sensitiveDocumentValueDisjoint = spCase[sensitiveField].split('/');
+            if(sensitiveDocumentValueDisjoint.length === 3){
             const sensitiveFieldValueSplit = spCase[sensitiveFieldArray[0]].split('/');
             const offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
             const encryptedFieldValue = spCase[sensitiveFieldArray[0]].substring(offsetEncryptedFieldValue);
@@ -225,10 +229,10 @@ export class HomeComponent implements OnInit {
         // Also applies for addresses, which might contain phone and addresses
         // let fieldObjectsLength = spCase[subSensitiveField[0]].length;
 
-        if (spCase[sensitiveFieldArray[0]] != null) {
+        if (spCase[sensitiveFieldArray[0]]) {
           spCase[sensitiveFieldArray[0]].forEach((sensitiveDocument: any, index: number) => {
             const sensitiveDocumentValueDisjoint = sensitiveDocument[sensitiveFieldArray[1]].split('/');
-            if(sensitiveDocumentValueDisjoint.length=3){
+            if(sensitiveDocumentValueDisjoint.length===3){
               const offsetEncryptedFieldValue = sensitiveDocumentValueDisjoint[1].length + sensitiveDocumentValueDisjoint[2].length + 3;
               const encryptedFieldValue = sensitiveDocument[sensitiveFieldArray[1]].substring(offsetEncryptedFieldValue, );
               if (sensitiveDocumentValueDisjoint[1] === 'ENC') { // if is encrypted
@@ -246,7 +250,7 @@ export class HomeComponent implements OnInit {
     });
     // @ts-ignore
     // tslint:disable-next-line:only-arrow-functions max-line-length
-    chrome.runtime.sendMessage( {decryptedCaseWithSensitiveFields, decryptedCaseNamed }, function(_) {});
+    chrome.runtime.sendMessage( {decryptedCaseWithSensitiveFields, decryptedCaseNamed }, function(_: any) {});
     this.injectionDecryptedData = spCase;
     return decryptedCaseNamed;
   }
