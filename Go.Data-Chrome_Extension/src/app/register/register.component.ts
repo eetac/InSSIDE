@@ -44,13 +44,13 @@ export class RegisterComponent implements OnInit {
     this.authenticationService.register(this.f.email.value, this.f.password.value).subscribe(user => {
      /* const message = `This is your Private Key (store it securely): ${user.privateKey}`;*/
       this.clipboard.copy(user.privateKey);
-      environment.isExtensionBuild ? this.alertChromeTab('Private Key copied to clipboard, remember to save it!') : alert('Private Key copied to clipboard, remember to save it!');
+      this.alertChromeTab('Private Key copied to clipboard, remember to save it!');
       this.loading = false;
       this.router.navigate(['/home']);
     },
     (error) => {
       console.log(error);
-      environment.isExtensionBuild ? this.alertChromeTab(error.error.error.message) : alert(error.error.error.message);
+      this.alertChromeTab(error.error.error.message);
       this.loading = false;
     }
     );
@@ -71,7 +71,7 @@ export class RegisterComponent implements OnInit {
   }*/
   alertChromeTab(message: string){
     // @ts-ignore
-    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, (tabs: any) => {
       const url = tabs[0].url;
       console.log('url: ', url);
       // @ts-ignore

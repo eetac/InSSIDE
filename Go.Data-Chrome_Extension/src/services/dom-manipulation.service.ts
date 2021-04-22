@@ -83,10 +83,10 @@ export class DomManipulationService {
           chrome.tabs.executeScript(tabs[0].id, {code }, (result: any) => {
             // @ts-ignore
             // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage( {getCaseFrom: result}, function(_: any) {});
+            chrome.runtime.sendMessage( {DomManipulationServiceResults: result}, function(_: any) {});
             // @ts-ignore
             // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage( {getCaseFromDOM: result[0]}, function(_: any) {});
+            chrome.runtime.sendMessage( {DomManipulationServiceGetCase: result[0]}, function(_: any) {});
             return resolve( result[0]);
           });
         }
