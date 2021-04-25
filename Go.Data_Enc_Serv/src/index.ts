@@ -100,7 +100,7 @@ dbHandler.initiateDB().then((res)=>{
         server.listen(port);
         // Create 2nd Thread where the autoEncrypt works every X min
         /*autoEncrypt.timerEncrypt();*/
-        if(config.AUTOENCRYPTIONTIMER>0){
+        if(config.AUTO_ENCRYPTION_TIMER>0){
             runOffThread().catch(err => console.error(err));
         }
     }).catch((err)=>{

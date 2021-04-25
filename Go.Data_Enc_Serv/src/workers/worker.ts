@@ -11,7 +11,7 @@ function timerEncrypt() {
     // setTimeout to re-execute the main logic on a timer, there also exist
     // setInterval which is tempting but risk starting a run before the prior run completes
     const body = {
-        email: configWorker.USER,
+        hospital: configWorker.HOSPITAL,
         password: configWorker.PASSWORD
     }
     let uri = `${configWorker.URL}/users/login`;
@@ -23,13 +23,13 @@ function timerEncrypt() {
             let cases = JSON.parse(response);
             console.log("Gonna run encryption...");
             anonymizationHelper.encryptCases(cases).then((res) => {
-                console.log(`Auto Encryption ran successfully, next auto encryption in: ${configWorker.AUTOENCRYPTIONTIMER}`);
+                console.log(`Auto Encryption ran successfully, next auto encryption in: ${configWorker.AUTO_ENCRYPTION_TIMER}`);
                 /*process.send(`Next auto encryption in: ${configWorker.autoEncryptSeconds}`);*/
-                setTimeout(timerEncrypt, configWorker.AUTOENCRYPTIONTIMER * 1000);
+                setTimeout(timerEncrypt, configWorker.AUTO_ENCRYPTION_TIMER * 1000);
             }).catch((erroneousResult: any) => {
                 console.log(`Error while auto encrypting cases :: ${erroneousResult}`);
-                console.log(`Next auto encryption in: ${configWorker.AUTOENCRYPTIONTIMER}`);
-                setTimeout(timerEncrypt, configWorker.AUTOENCRYPTIONTIMER * 1000);
+                console.log(`Next auto encryption in: ${configWorker.AUTO_ENCRYPTION_TIMER}`);
+                setTimeout(timerEncrypt, configWorker.AUTO_ENCRYPTION_TIMER * 1000);
             });
         }).catch((err: any) => {
             console.log(err);
@@ -46,7 +46,7 @@ const dbOptions: ConnectionOptions = {
 mongoose.connect(configWorker.DB.URI, dbOptions).then(r =>{
     console.log('Connection w/ DB Successful!')
     console.log("Running child process...");
-    console.log(`Auto Encryption every: ${configWorker.AUTOENCRYPTIONTIMER} seconds`);
+    console.log(`Auto Encryption every: ${configWorker.AUTO_ENCRYPTION_TIMER} seconds`);
     /*process.send("Testing if runs even after 60seconds");*/
     timerEncrypt()
 }).catch((err)=> {

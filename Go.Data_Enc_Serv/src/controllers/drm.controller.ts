@@ -34,7 +34,7 @@ async function login(req: Request, res: Response) {
 }
 
 async function register(req: Request, res: Response) {
-
+    req.body.hospital = req.body.hospital.toLowerCase();
     const hospital = req.body.hospital;
     const goDataPassword = req.body.password;
 
@@ -76,6 +76,7 @@ async function register(req: Request, res: Response) {
         newUser.save().then((data) => {
             console.log('User added successfully');
             newUser.password = "password-hidden";
+            newUser.privateKey = privateKey;
             res.status(201).json(newUser);
         }).catch((err) => {
             console.log(err)
@@ -90,18 +91,21 @@ async function getKeyOfCase(req: Request, res: Response) {
     let caseId = req.body.caseId;//req.params.hashCase;
     //TODO: Future get from token, now just trusting the message body...
     let hospital: string = req.body.hospital;
+    console.log("-> hospital", hospital);
     GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
-        if(goDataLicense != null){
+
+        if(goDataLicense){
             // GoDataLicense found...
             let i = 0;
             // Find where the hospitalName is equal to hospital, inside the licenses...
-            while (goDataLicense.keys[i].hospital.toString() != hospital) {
+            while (goDataLicense.keys[i].hospital.toString() !== hospital) {
                 i = i + 1;
-                if(goDataLicense.keys.length==i){
+                console.log("-> goDataLicense.keys[i].hospital: ", goDataLicense.keys[i].hospital);
+                if(goDataLicense.keys.length === i){
                     return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
                 }
             }
-            if (goDataLicense.keys[i].hospital.toString() == hospital) {
+            if (goDataLicense.keys[i].hospital.toString() === hospital) {
                 //We will return the key encrypted with the public key, so only the
                 // hospital or user with private key can decrypt and get the symmetric key!
                 return res.status(200).send({
@@ -123,14 +127,14 @@ async function getKeyOfCase(req: Request, res: Response) {
 async function dataKeyTransfer(req:Request, res: Response){
 
     //Only an existent user of a case, can transfer the key to some other hospital
-    let hospital = req.body.hospital; // TODO: Future retrieve from token!
+    let hospital = req.body.hospital; // TODO: Retrieve from token!
     let hospitalToTransfer = req.body.hospitalToTransfer; // Directly in the json as nothing personal
     console.log("Transfer Solicited for "+hospitalToTransfer);
     let caseId = req.body.caseId;
     //We need both the private key of the existent user and the private key of the transfer user
     // First we find that the hospital exists
-    let managerUser = await User.findOne({ hospital: config.USER_NAME});
-    if(managerUser==null){
+    let managerUser = await User.findOne({ hospital: config.HOSPITAL});
+    if(!managerUser){
         return res.status(500).send({error: { message:"Cannot transfer, server error" ,status:500}});
     }
     let targetUser =  await User.findOne({ hospital: hospitalToTransfer});
@@ -140,21 +144,31 @@ async function dataKeyTransfer(req:Request, res: Response){
     }
     // Contains the symmetric key!
     GoDataLicenses.findOne({ caseId: caseId}).then((licenseToTransfer)=>{
-        if(licenseToTransfer!=null){
+        if(licenseToTransfer){
             // GoDataLicense found...
             let i = 0;
+            // First we check if the hospital has permission for this case
+            while (licenseToTransfer.keys[i].hospital.toString() !== hospital) {
+                i = i + 1;
+                if(licenseToTransfer.keys.length===i){
+                    return res.status(401).send({error: { message:"Unauthorized, doesn't has permission" ,status:500}});
+                }
+            }
+            const keyPositionHosp = i;
+            i=0;
             // Find where the hospitalName is equal to manager, inside the licenses...
             // As we don't have access to hospital private key, the only way to transfer is using the private key
             // of the manager/administrator
-            while (licenseToTransfer.keys[i].hospital.toString() != config.USER_NAME) {
+            while (licenseToTransfer.keys[i].hospital.toString() !== config.HOSPITAL) {
                 i = i + 1;
-                if(licenseToTransfer.keys.length==i){
+                if(licenseToTransfer.keys.length===i){
+                    console.error("Admin not found, for license case id: ", caseId);
                     return res.status(500).send({error: { message:"Server error, please contact administrator" ,status:500}});
                 }
             }
             
             //User exists
-            if(targetUser!=null){
+            if(targetUser){
                 //Target user actually exists
                 // Step1. Decrypt the symmetric key from the License
                 let encryptedKey:string = licenseToTransfer.keys[i].usedKey;

@@ -39,7 +39,7 @@ function initiateDB() {
 function createAdmin():Promise<boolean>{
     return new Promise((resolve,reject )=>{
         try {
-            let query = { email: config.USER };
+            let query = { hospital: config.HOSPITAL };
             User.findOne(query).then((res)=>{
                 if(res==null){
                     // Admin not created in the DB
@@ -61,15 +61,13 @@ function createAdmin():Promise<boolean>{
                             }
                         });
                     let managerUser:IUser = new User({
-                        email           :   config.USER,
+                        hospital        :   config.HOSPITAL,
                         password        :   password,
-                        userGoDataId    :   config.USERGODATAID,
-                        institutionName :   config.INSTITUTION,
                         publicKey       :   publicKey,
                         privateKey      :   privateKey
                     });
                     managerUser.save().then((_) => {
-                        console.log(`Admin Account Created with email: ${config.USER}`);
+                        console.log(`Admin Account Created with email: ${config.HOSPITAL}`);
                         resolve( true );return;
                     }).catch((err) => {
                         reject( new Error( err ) );
@@ -77,7 +75,7 @@ function createAdmin():Promise<boolean>{
                     });
                 }else{
                     //No need to create admin,already exits!
-                    console.log(`Admin account already exists with email:${config.USER}`);
+                    console.log(`Admin account already exists as :${config.HOSPITAL}`);
                     resolve( true );
                     return;
                 }

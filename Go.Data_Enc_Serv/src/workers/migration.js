@@ -1,4 +1,4 @@
-const path = require('path');
+import {resolve} from 'path';
 /*const { workerData } = require('worker_threads');*/
 
 require('ts-node').register();

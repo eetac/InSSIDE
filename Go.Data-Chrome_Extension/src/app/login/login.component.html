@@ -1,7 +1,7 @@
 <h2>Login</h2>
 <form [formGroup]="loginForm" (ngSubmit)="login()">
   <div class="form-group">
-      <label for="hospital">hospital</label>
+      <label for="hospital">Hospital Name</label>
       <input type="text" formControlName="hospital" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.hospital.errors }" />
       <div *ngIf="submitted && f.hospital.errors" class="invalid-feedback">
           <div *ngIf="f.hospital.errors.required">Hospital is required</div>

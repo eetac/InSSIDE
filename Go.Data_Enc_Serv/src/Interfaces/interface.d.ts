@@ -5,7 +5,7 @@ interface IConfig {
     IV_LENGTH :number,
     saltRounds :number,
     EMAIL :string,
-    USER_NAME   :string,// Hospital Name, in our case it is the administrator name for DRM server
+    HOSPITAL   :string,// Hospital Name, in our case it is the administrator name for DRM server
     PASSWORD :string,
     USER_AGENT :string,
     USER_GODATA_ID :string,

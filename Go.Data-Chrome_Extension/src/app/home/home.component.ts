@@ -207,7 +207,7 @@ export class HomeComponent implements OnInit {
             // FIXME: Choose between hospital or name of the hospital, thus removing
             //        the hospital completely. Updating the registration and login system to use
             //        Name of the hospital, for the account!
-            if (sensitiveFieldValueSplit[2] === this.authenticationService.currentUserValue.hospital.split('@')[1].split('.')[0]){
+            if (sensitiveFieldValueSplit[2] === this.authenticationService.currentUserValue.hospital.toLowerCase()){
                // '/ENC/Hospital/SensitiveField'
               const offsetEncryptedFieldValue = 0 + 1 + sensitiveFieldValueSplit[1].length + 1 + sensitiveFieldValueSplit[2].length + 1;
               const encryptedFieldValue = spCase[sensitiveFieldArray[0]].substring(offsetEncryptedFieldValue);
@@ -240,7 +240,7 @@ export class HomeComponent implements OnInit {
               // FIXME: Choose between hospital or name of the hospital, thus removing
               //        the hospital completely. Updating the registration and login system to use
               //        Name of the hospital, for the account!
-              if (sensitiveDocumentValueDisjoint[2] === this.authenticationService.currentUserValue.hospital.split('@')[1].split('.')[0]){
+              if (sensitiveDocumentValueDisjoint[2] === this.authenticationService.currentUserValue.hospital.toLowerCase()){
                 const offsetEncryptedFieldValue = sensitiveDocumentValueDisjoint[1].length + sensitiveDocumentValueDisjoint[2].length + 3;
                 const encryptedFieldValue = sensitiveDocument[sensitiveFieldArray[1]].substring(offsetEncryptedFieldValue, );
                   // Decrypt Field

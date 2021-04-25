@@ -60,12 +60,10 @@ function getInstituteCreator(idCreator: string):Promise<any>{
             
             httpHelper.doGet(url).then((res)=>{
                 let user = JSON.parse(res);
-                let institute = user.institutionName.split("_");
-                let nameInstitute = institute.splice(6,institute.length-1).join('');
+                console.log("-> res", res);
                 const hospitalName = user.email.split('@')[1].split('.')[0];
                 let createdBy = {
-                    creatorInstitute    :   nameInstitute,
-                    email               :   user.email,
+                    email           :   user.email,
                     hospital        :   hospitalName
                 };
                 return resolve(createdBy);
@@ -135,7 +133,7 @@ function auth():Promise<string>{
     return new Promise((resolve,reject )=> {
         const url = `${config.URL}/users/login`;
         const body = {
-            email: config.USER,
+            email: config.EMAIL,
             password: config.PASSWORD
         }
 

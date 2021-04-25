@@ -46,7 +46,7 @@ function encryptCases(cases: any): Promise<IResult> {
         cases[i],
         iv,
         encryptionKey,
-        createdBy.hospitalName
+        createdBy.hospital
       );
       cases[i] = caseData.caseEncrypted;
       cipFound = caseData.isCipFound;
@@ -230,7 +230,7 @@ function updateCase(
       hospital: string;
     }>;
     //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
-    User.findOne({ hospital: config.USER_NAME })
+    User.findOne({ hospital: config.HOSPITAL })
       .then((managerUser) => {
         /* console.log("managerUser: "+managerUser); */
         if (managerUser) {
@@ -239,7 +239,7 @@ function updateCase(
             managerUser.publicKey,
             encryptionKey
           );
-          User.findOne({ userGoDataId: encryptedCase.createdBy })
+          User.findOne({ hospital: createdBy.hospital })
             .then((caseCreatedByUser) => {
               if (caseCreatedByUser != null) {
                 let keyEncrypted2: string = asymmetricCipher.encryptKeyRSA(
@@ -252,7 +252,7 @@ function updateCase(
                   {
                     /*institutionName : config.INSTITUTION,*/
                     usedKey: keyEncrypted,
-                    hospital: config.USER_NAME,
+                    hospital: config.HOSPITAL,
                   },
                   {
                     /*institutionName : creatorInstitute,*/
@@ -266,7 +266,7 @@ function updateCase(
                   {
                     /*institutionName : config.INSTITUTION,*/
                     usedKey: keyEncrypted,
-                    hospital: config.USER_NAME,
+                    hospital: config.HOSPITAL,
                   },
                 ];
               }
@@ -345,5 +345,6 @@ function updateCase(
 
 export default {
   encryptCases,
+  encryptCase,
   updateCase
 };
