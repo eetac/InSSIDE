@@ -11,31 +11,31 @@ export class CaseService {
 
   }
   /**
-   * Given email, caseId gets the license from server, if the case license
-   * has been authorized to this email, than a license and the case is retrieved from the server.
+   * Given hospital, caseId gets the license from server, if the case license
+   * has been authorized to this hospital, than a license and the case is retrieved from the server.
    * @returns Returns license from the server.
    * @krunal
-   * @param email - string
+   * @param hospital - string
    * @param caseId - string
    */
-  getLicense(email: string, caseId: string) {
-    return this.http.post<any>(`${environment.apiUrl}/drm/getLicense`, { email, caseId })
+  getLicense(hospital: string, caseId: string) {
+    return this.http.post<any>(`${environment.apiUrl}/drm/getLicense`, { hospital, caseId })
     .pipe(map(data => {
       // Returns a Java Object mapped!
       return data;
     }));
   }
   /**
-   * Given email, caseId and email of the destination hospital. Transfers/Shares the license
+   * Given hospital, caseId and hospital of the destination hospital. Transfers/Shares the license
    * permission to destination hospital.
    * @returns Returns a data or error both containing messages from server.
    * @krunal
-   * @param email - string
+   * @param hospital - string
    * @param caseId - string
-   * @param emailToTransfer - string
+   * @param hospitalToTransfer - string
    */
-  transferLicense(email: string, caseId: string, emailToTransfer: string) {
-    return this.http.post<any>(`${environment.apiUrl}/drm/transferLicense`, { email, emailToTransfer, caseId })
+  transferLicense(hospital: string, caseId: string, hospitalToTransfer: string) {
+    return this.http.post<any>(`${environment.apiUrl}/drm/transferLicense`, { hospital, hospitalToTransfer, caseId })
     .pipe(map(data => {
       // Returns a Java Object mapped!
       return data;

@@ -15,4 +15,4 @@ const configExample = {
     },
     autoEncryptSeconds: 60
 };
-module.exports = config;
+module.exports = configExample;

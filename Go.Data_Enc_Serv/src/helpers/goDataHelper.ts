@@ -66,7 +66,7 @@ function getInstituteCreator(idCreator: string):Promise<any>{
                 let createdBy = {
                     creatorInstitute    :   nameInstitute,
                     email               :   user.email,
-                    hospitalName        :   hospitalName
+                    hospital        :   hospitalName
                 };
                 return resolve(createdBy);
             }).catch((err:any)=>{

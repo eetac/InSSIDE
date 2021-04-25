@@ -41,7 +41,7 @@ export class HomeComponent implements OnInit {
       caseId: ['', []]
     });
     this.transferForm = this.formBuilder.group({
-      emailToTransfer: ['', [Validators.required, Validators.email]]
+      hospitalToTransfer: ['', [Validators.required]]
     });
   }
 
@@ -56,7 +56,7 @@ export class HomeComponent implements OnInit {
 
   decryptCase(){
     if (this.fdecryptForm.caseId.value !== '' ) {
-      if(this.injectionDecryptedData || this.decryptedData ){
+      if (this.injectionDecryptedData || this.decryptedData ){
         this.reload();
       }else{
         this.runDecryption(this.fdecryptForm.caseId.value);
@@ -117,8 +117,8 @@ export class HomeComponent implements OnInit {
           // Step3. Decrypt the case with the symmetric key
           try {
             const decryptedCase = this.decryptCaseFromLicense(decryptedLicense, caseData);
-            if(decryptedCase){
-              if(Object.keys(decryptedCase).length > 0){
+            if (decryptedCase){
+              if (Object.keys(decryptedCase).length > 0){
                 // @ts-ignore
                 // tslint:disable-next-line:only-arrow-functions
                 chrome.runtime.sendMessage({decryptedCase}, function(_: any) {});
@@ -128,7 +128,7 @@ export class HomeComponent implements OnInit {
             }
           } catch (err) {
             // @ts-ignore
-            chrome.runtime.sendMessage({runDecryptionError: err.message}, function(_: any) {});
+            chrome.runtime.sendMessage({runDecryptionError: err.message}, (_: any) => {});
             this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
           }
           // Step4. Inject the decrypted data to the webpage
@@ -149,26 +149,26 @@ export class HomeComponent implements OnInit {
    */
   getLicenseAndObtainSymmetricKey(caseId: string): Promise<any>{
     return new Promise(async (resolve, reject ) => {
-      const email = this.authenticationService.currentUserValue.email;
+      const hospital = this.authenticationService.currentUserValue.hospital;
       const privateKey = this.authenticationService.currentUserValue.privateKey;
       // tslint:disable-next-line:max-line-length
-      this.caseService.getLicense(email, caseId).subscribe(
+      this.caseService.getLicense(hospital, caseId).subscribe(
         data => {
           // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
           // @ts-ignore
           // tslint:disable-next-line:only-arrow-functions
-          chrome.runtime.sendMessage({caseService : data}, function(_:any) {});
+          chrome.runtime.sendMessage({caseService : data}, function(_: any) {});
           const encryptedLicense = data.license;
           console.log(`Encrypted license: ${encryptedLicense}`);
-          let decryptedLicense:string;
+          let decryptedLicense: string;
           try{
             // @ts-ignore
             // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage({privateKey}, function(_:any) {});
+            chrome.runtime.sendMessage({privateKey}, function(_: any) {});
             decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
             // @ts-ignore
             // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage({decryptedLicense}, function(_:any) {});
+            chrome.runtime.sendMessage({decryptedLicense}, function(_: any) {});
             // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
             return resolve( decryptedLicense);
           }catch (e) {
@@ -201,30 +201,30 @@ export class HomeComponent implements OnInit {
       if (sensitiveFieldArray.length === 1) {
         // If the beginning of the value is equal to /ENC/ we decrypt the field
         if (spCase[sensitiveField]) {
-            if( spCase[sensitiveField].substring(0, 5) === '/ENC/'){
+            if ( spCase[sensitiveField].substring(0, 5) === '/ENC/'){
             const sensitiveFieldValueSplit = spCase[sensitiveFieldArray[0]].split('/');
             // TODO: Check if the encrypted field has the same hospital as the license-?
-            // FIXME: Choose between email or name of the hospital, thus removing
-            //        the email completely. Updating the registration and login system to use
+            // FIXME: Choose between hospital or name of the hospital, thus removing
+            //        the hospital completely. Updating the registration and login system to use
             //        Name of the hospital, for the account!
-            if(sensitiveFieldValueSplit[2] === this.authenticationService.currentUserValue.email.split('@')[1].split('.')[0]){
+            if (sensitiveFieldValueSplit[2] === this.authenticationService.currentUserValue.hospital.split('@')[1].split('.')[0]){
                // '/ENC/Hospital/SensitiveField'
-              const offsetEncryptedFieldValue = 0 + 1 + sensitiveFieldValueSplit[1].length + 1 + sensitiveFieldValueSplit[2].length +1;
+              const offsetEncryptedFieldValue = 0 + 1 + sensitiveFieldValueSplit[1].length + 1 + sensitiveFieldValueSplit[2].length + 1;
               const encryptedFieldValue = spCase[sensitiveFieldArray[0]].substring(offsetEncryptedFieldValue);
               spCase[sensitiveField] = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
               decryptedCaseNamed[sensitiveField] =  spCase[sensitiveField];
             }else{
               const err = `${sensitiveField} is encrypted with different hospital license, not decrypting this field!`;
               // @ts-ignore
-              chrome.runtime.sendMessage( {decryptCaseFromLicenseError:err}, function(_: any) {});
+              chrome.runtime.sendMessage( {decryptCaseFromLicenseError: err}, (_: any) => {});
             }
 
-            
+
           }
         } else {
           const err = `${sensitiveField} is null, not decrypting this field!`;
           // @ts-ignore
-          chrome.runtime.sendMessage( {decryptCaseFromLicenseError:err}, function(_: any) {});
+          chrome.runtime.sendMessage( {decryptCaseFromLicenseError: err}, (_: any) => {});
         }
       } else {
         // Has sensitiveField configured in config with internal subfields of the objects stored in a array
@@ -233,30 +233,30 @@ export class HomeComponent implements OnInit {
         // Also applies for addresses, which might contain phone and addresses
         if (spCase[sensitiveFieldArray[0]]) {
           spCase[sensitiveFieldArray[0]].forEach((sensitiveDocument: any, index: number) => {
-            if(sensitiveDocument[sensitiveFieldArray[1]].substring(0, 5) === '/ENC/'){
+            if (sensitiveDocument[sensitiveFieldArray[1]].substring(0, 5) === '/ENC/'){
               const sensitiveDocumentValueDisjoint = sensitiveDocument[sensitiveFieldArray[1]].split('/');
 
               // TODO: Check if the encrypted field has the same hospital as the license-?
-              // FIXME: Choose between email or name of the hospital, thus removing
-              //        the email completely. Updating the registration and login system to use
+              // FIXME: Choose between hospital or name of the hospital, thus removing
+              //        the hospital completely. Updating the registration and login system to use
               //        Name of the hospital, for the account!
-              if(sensitiveDocumentValueDisjoint[2] === this.authenticationService.currentUserValue.email.split('@')[1].split('.')[0]){
+              if (sensitiveDocumentValueDisjoint[2] === this.authenticationService.currentUserValue.hospital.split('@')[1].split('.')[0]){
                 const offsetEncryptedFieldValue = sensitiveDocumentValueDisjoint[1].length + sensitiveDocumentValueDisjoint[2].length + 3;
                 const encryptedFieldValue = sensitiveDocument[sensitiveFieldArray[1]].substring(offsetEncryptedFieldValue, );
                   // Decrypt Field
-                  const decryptedField: string = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
+                const decryptedField: string = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
                   // Store the decrypted field as a object with field Type
-                  spCase[sensitiveFieldArray[0]][index][sensitiveFieldArray[1]] = decryptedField;
-                  decryptedCaseNamed[`${sensitiveDocument['type']}`] = decryptedField;
+                spCase[sensitiveFieldArray[0]][index][sensitiveFieldArray[1]] = decryptedField;
+                decryptedCaseNamed[`${sensitiveDocument.type}`] = decryptedField;
               }else{
                 const err = `${sensitiveFieldArray[1]} is encrypted with different hospital license, not decrypting this field!`;
                 // @ts-ignore
-                chrome.runtime.sendMessage( {decryptCaseFromLicenseError:err}, function(_: any) {});
+                chrome.runtime.sendMessage( {decryptCaseFromLicenseError: err}, (_: any) => {});
               }
             }else {
               const err = `${sensitiveFieldArray[1]} is null, not decrypting this field!`;
               // @ts-ignore
-              chrome.runtime.sendMessage( {decryptCaseFromLicenseError:err}, function(_: any) {});
+              chrome.runtime.sendMessage( {decryptCaseFromLicenseError: err}, (_: any) => {});
             }
           });
         }
@@ -275,12 +275,12 @@ export class HomeComponent implements OnInit {
   }
 
   shareAccessToHospitals(){
-    if ((this.fdecryptForm.caseId.value !== '') && (this.ftransferForm.emailToTransfer.value !== '')) {
+    if ((this.fdecryptForm.caseId.value !== '') && (this.ftransferForm.hospitalToTransfer.value !== '')) {
 
-        const email = this.authenticationService.currentUserValue.email;
+        const hospital = this.authenticationService.currentUserValue.hospital;
         const caseId = this.fdecryptForm.caseId.value;
-        const emailToTransfer = this.ftransferForm.emailToTransfer.value;
-        this.caseService.transferLicense(email, caseId, emailToTransfer).subscribe(
+        const hospitalToTransfer = this.ftransferForm.hospitalToTransfer.value;
+        this.caseService.transferLicense(hospital, caseId, hospitalToTransfer).subscribe(
         data => {
           // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
           console.log(data);

@@ -1,23 +1,23 @@
 // interfaces.ts
 
 interface IConfig {
-    URL : string,
-    IV_LENGTH : number,
-    saltRounds : number,
-    USER :string,
-    PASSWORD : string,
-    USER_AGENT : string,
-    USERGODATAID:string,
-    INSTITUTION:string,
-    DOCUMENT_HASH:string,
-    OUTBREAK_ID : string,
-    SENSITIVEDATA : Array<string>,
+    URL :string,
+    IV_LENGTH :number,
+    saltRounds :number,
+    EMAIL :string,
+    USER_NAME   :string,// Hospital Name, in our case it is the administrator name for DRM server
+    PASSWORD :string,
+    USER_AGENT :string,
+    USER_GODATA_ID :string,
+    DOCUMENT_HASH :string,
+    OUTBREAK_ID :string,
+    SENSITIVE_DATA :Array<string>,
     DB: {
         URI: string,
         USER: string,
         PASSWORD: string
     },
-    AUTOENCRYPTIONTIMER: number
+    AUTO_ENCRYPTION_TIMER: number
 }
 
 export {

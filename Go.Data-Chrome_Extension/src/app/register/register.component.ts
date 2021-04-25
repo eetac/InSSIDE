@@ -25,7 +25,7 @@ export class RegisterComponent implements OnInit {
 
   ngOnInit(): void {
     this.registerForm = this.formBuilder.group({
-      email   : ['', [Validators.required, Validators.email]],
+      hospital   : ['', [Validators.required]],
       password: ['', [Validators.required, Validators.minLength(8)]],
     });
   }
@@ -41,7 +41,7 @@ export class RegisterComponent implements OnInit {
         return;
     }
     this.loading = true;
-    this.authenticationService.register(this.f.email.value, this.f.password.value).subscribe(user => {
+    this.authenticationService.register(this.f.hospital.value, this.f.password.value).subscribe(user => {
      /* const message = `This is your Private Key (store it securely): ${user.privateKey}`;*/
       this.clipboard.copy(user.privateKey);
       this.alertChromeTab('Private Key copied to clipboard, remember to save it!');

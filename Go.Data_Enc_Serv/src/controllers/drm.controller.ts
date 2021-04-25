@@ -9,23 +9,23 @@ const config = require('../configurations/config');
 
 async function login(req: Request, res: Response) {
 
-    console.log('Log in -> email: ' + req.body.email + ' ' + req.body.password)
-    if (!req.body.email || !req.body.password) {
-        return res.status(400).json({error: { message:"Email/Password required" ,status:400}});
+    console.log('Log in -> hospital: ' + req.body.hospital + ' ' + req.body.password)
+    if (!req.body.hospital || !req.body.password) {
+        return res.status(400).json({error: { message:"hospital/Password required" ,status:400}});
     }
-    User.findOne({ email: req.body.email }).then((user)=>{
+    User.findOne({ hospital: req.body.hospital }).then((user)=>{
         if(user!=null){
             if (Bcrypt.compareSync(req.body.password, user.password)) {
                 console.log("Login Successful");
-                res.status(200).send({ message: 'Login Successful',userGoDataId:user.userGoDataId });
+                res.status(200).send({ message: 'Login Successful'});
             }
             else {
-                console.log("Login Failed, The email and password don\'t match.");
-                return res.status(400).send({ error: {message:"The email and password don\'t match.",status:400}});
+                console.log("Login Failed, The hospital and password don\'t match.");
+                return res.status(400).send({ error: {message:"The hospital and password don\'t match.",status:400}});
             }
         }else{
             console.log("Login Failed, Failed while trying to login, now user found");
-            res.status(400).send({ error: { message: 'Login Failed, email/Password Incorrect or Not Found!' ,status:400}});
+            res.status(400).send({ error: { message: 'Login Failed, hospital/Password Incorrect or Not Found!' ,status:400}});
         }
     }).catch((err)=>{
         console.log("Login Failed, Failed while trying to login");
@@ -35,61 +35,52 @@ async function login(req: Request, res: Response) {
 
 async function register(req: Request, res: Response) {
 
-    const email = req.body.email;
+    const hospital = req.body.hospital;
     const goDataPassword = req.body.password;
 
     console.log(req.body);
-    let existUser = await User.findOne({ email: email });
+    let existUser = await User.findOne({ hospital: hospital });
     if (existUser) {
-        res.status(403).json({error: { message: "Already exist a user with this email" ,status:403}});
+        res.status(403).json({error: { message: "Already exist a user with this hospital" ,status:403}});
     }
     else {
-        //TODO: CHECK ON GO DATA IF LOGIN POSSIBLE AND USER EXITS
-        goDataHelper.getGoDataUserId(email,goDataPassword).then((userGoDataId)=>{
-            // userGoDataId is found and thus user can be registered
-            //When we want to add new user we need to generate RSA keys
-            //We need to hash the password
-            const saltRounds = 10;
-            let password = Bcrypt.hashSync(goDataPassword,saltRounds);
-            // RSA Private and Public Key in PEM format, if we need to export the key as a file ##FUTURE!
-            const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',
-                {   modulusLength: 4096,  // the length of your key in bits
-                    publicKeyEncoding: {
-                        type: 'spki',       // recommended to be 'spki' by the Node.js docs
-                        format: 'pem'
-                    },
-                    privateKeyEncoding: {
-                        type: 'pkcs8',      // recommended to be 'pkcs8' by the Node.js docs
-                        format: 'pem',
-                        //cipher: 'aes-256-cbc',   // *optional*
-                        //passphrase: 'top secret' // *optional*
-                    }
-                });
-            let newUser:IUser = new User({
-                email           :   email,
-                password        :   password,
-                userGoDataId    :   userGoDataId,
-                publicKey       :   publicKey,
-                privateKey      :   privateKey
+        //When we want to add new user we need to generate RSA keys
+        //We need to hash the password
+        const saltRounds = 10;
+        let password = Bcrypt.hashSync(goDataPassword,saltRounds);
+        // RSA Private and Public Key in PEM format, if we need to export the key as a file ##FUTURE!
+        const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',
+            {   modulusLength: 4096,  // the length of your key in bits
+                publicKeyEncoding: {
+                    type: 'spki',       // recommended to be 'spki' by the Node.js docs
+                    format: 'pem'
+                },
+                privateKeyEncoding: {
+                    type: 'pkcs8',      // recommended to be 'pkcs8' by the Node.js docs
+                    format: 'pem',
+                    //cipher: 'aes-256-cbc',   // *optional*
+                    //passphrase: 'top secret' // *optional*
+                }
             });
-            console.log(newUser)
-            // New user will be sent to the user who just registered, on top of that we need to encrypt the private key itself
-            // with the user password, so that even on a db leak, all of the data is protected by hospital key!
-            // FUTURE--> For now no encryption, as the hospital should be able to ask for a password change!
+        let newUser:IUser = new User({
+            hospital           :   hospital,
+            password        :   password,
+            publicKey       :   publicKey,
+            privateKey      :   'Not stored'
+        });
+        console.log(newUser)
+        // New user will be sent to the user who just registered, on top of that we need to encrypt the private key itself
+        // with the user password, so that even on a db leak, all of the data is protected by hospital key!
+        // FUTURE--> For now no encryption, as the hospital should be able to ask for a password change!
 
-            newUser.save().then((data) => {
-                console.log('User added successfully');
-                newUser.password = "password-hidden";
-                res.status(201).json(newUser);
-            }).catch((err) => {
-                console.log(err)
-                res.status(500).json({error: { message: err ,status:500}});
-            })
-        }).catch((err)=>{
-            //TODO: IF DOESN'T EXIST THAN DON'T ALLOW REGISTRATION!
-            res.status(500).json( {error: { message:"Email/Password incorrect, doesn't exist on goData server" ,status:500}});
+        newUser.save().then((data) => {
+            console.log('User added successfully');
+            newUser.password = "password-hidden";
+            res.status(201).json(newUser);
+        }).catch((err) => {
+            console.log(err)
+            res.status(500).json({error: { message: err ,status:500}});
         })
-
     }
 
 }
@@ -97,20 +88,20 @@ async function register(req: Request, res: Response) {
 async function getKeyOfCase(req: Request, res: Response) {
     //Hospital ask for the decryption key of a case and DRM return the key encrypted with the pubKey for security reasons
     let caseId = req.body.caseId;//req.params.hashCase;
-    //TODO: Future get from token, now just testing...
-    let email: string = req.body.email;
+    //TODO: Future get from token, now just trusting the message body...
+    let hospital: string = req.body.hospital;
     GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
         if(goDataLicense != null){
             // GoDataLicense found...
             let i = 0;
-            // Find where the hospitalName is equal to email, inside the licenses...
-            while (goDataLicense.keys[i].email.toString() != email) {
+            // Find where the hospitalName is equal to hospital, inside the licenses...
+            while (goDataLicense.keys[i].hospital.toString() != hospital) {
                 i = i + 1;
                 if(goDataLicense.keys.length==i){
                     return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
                 }
             }
-            if (goDataLicense.keys[i].email.toString() == email) {
+            if (goDataLicense.keys[i].hospital.toString() == hospital) {
                 //We will return the key encrypted with the public key, so only the
                 // hospital or user with private key can decrypt and get the symmetric key!
                 return res.status(200).send({
@@ -132,20 +123,20 @@ async function getKeyOfCase(req: Request, res: Response) {
 async function dataKeyTransfer(req:Request, res: Response){
 
     //Only an existent user of a case, can transfer the key to some other hospital
-    let email = req.body.email; // TODO: Future retrieve from token!
-    let emailToTransfer = req.body.emailToTransfer; // Directly in the json as nothing personal
-    console.log("Transfer Solicited for "+emailToTransfer);
+    let hospital = req.body.hospital; // TODO: Future retrieve from token!
+    let hospitalToTransfer = req.body.hospitalToTransfer; // Directly in the json as nothing personal
+    console.log("Transfer Solicited for "+hospitalToTransfer);
     let caseId = req.body.caseId;
     //We need both the private key of the existent user and the private key of the transfer user
-    // First we find that the email exists
-    let managerUser = await User.findOne({ email: config.USER});
+    // First we find that the hospital exists
+    let managerUser = await User.findOne({ hospital: config.USER_NAME});
     if(managerUser==null){
         return res.status(500).send({error: { message:"Cannot transfer, server error" ,status:500}});
     }
-    let targetUser =  await User.findOne({ email: emailToTransfer});
+    let targetUser =  await User.findOne({ hospital: hospitalToTransfer});
     //User exists
-    if(targetUser==null){
-        return res.status(404).send({error: { message:"Cannot transfer, target email doesn't exist" ,status:404}});
+    if(!targetUser){
+        return res.status(404).send({error: { message:"Cannot transfer, target hospital doesn't exist" ,status:404}});
     }
     // Contains the symmetric key!
     GoDataLicenses.findOne({ caseId: caseId}).then((licenseToTransfer)=>{
@@ -155,7 +146,7 @@ async function dataKeyTransfer(req:Request, res: Response){
             // Find where the hospitalName is equal to manager, inside the licenses...
             // As we don't have access to hospital private key, the only way to transfer is using the private key
             // of the manager/administrator
-            while (licenseToTransfer.keys[i].email.toString() != config.USER) {
+            while (licenseToTransfer.keys[i].hospital.toString() != config.USER_NAME) {
                 i = i + 1;
                 if(licenseToTransfer.keys.length==i){
                     return res.status(500).send({error: { message:"Server error, please contact administrator" ,status:500}});
@@ -175,8 +166,7 @@ async function dataKeyTransfer(req:Request, res: Response){
                 let newKey =
                     {
                         usedKey : keyEncrypted,
-                        userGoDataId:targetUser.userGoDataId,
-                        email:targetUser.email
+                        hospital:targetUser.hospital
                     };
                 const queryUpdate = { _id: licenseToTransfer._id };
                 

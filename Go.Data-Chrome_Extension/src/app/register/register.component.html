@@ -1,11 +1,10 @@
 <h2>Register</h2>
 <form [formGroup]="registerForm" (ngSubmit)="register()">
   <div class="form-group">
-      <label for="email">Email GoData</label>
-      <input type="text" formControlName="email" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.email.errors }" />
-      <div *ngIf="submitted && f.email.errors" class="invalid-feedback">
-          <div *ngIf="f.email.errors.required">Email is required</div>
-          <div *ngIf="f.email.errors.email">Email is required to be an email</div>
+      <label for="hospital">Hospital GoData</label>
+      <input type="text" formControlName="hospital" class="form-control" [ngClass]="{ 'is-invalid': submitted && f.hospital.errors }" />
+      <div *ngIf="submitted && f.hospital.errors" class="invalid-feedback">
+          <div *ngIf="f.hospital.errors.required">Hospital is required</div>
       </div>
   </div>
   <div class="form-group">

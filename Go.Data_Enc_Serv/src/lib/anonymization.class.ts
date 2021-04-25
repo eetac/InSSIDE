@@ -5,7 +5,7 @@ import GoDataLicenses, { IGoDataLicensesSchema } from "../models/godataLicense";
 import asymmetricCipher from "../helpers/cipherRSA";
 import goDataHelper from "../helpers/goDataHelper";
 import symmetricCipher from "../helpers/cipherAES";
-/* const Bcrypt = require('bcrypt'); */
+
 interface IResult {
   message: string;
   statusCode: number;
@@ -13,7 +13,7 @@ interface IResult {
 /**
  * Encrypts all of the case, under admin
  * But remember to configure the config.ts properly
- * with the GoData email,password and the outbreak
+ * with the GoData hospital,password and the outbreak
  * which requires protection.
  * Examples:
  *
@@ -32,7 +32,7 @@ function encryptCases(cases: any): Promise<IResult> {
       );
       let hashId: string;
       let cipFound = false;
-      console.log("STEP1 --> hospitalName CREATOR: " + createdBy.hospitalName);
+      console.log("STEP1 --> Case Creator hospital Name: " + createdBy.hospital);
       let encryptionKey = crypto
         .randomFillSync(Buffer.alloc(32))
         .toString("base64");
@@ -96,7 +96,7 @@ function encryptCase(
   let isCipFound = false;
   let hashId: string;
   let fieldsModified = false;
-  config.SENSITIVEDATA.forEach((sensitiveField: string) => {
+  config.SENSITIVE_DATA.forEach((sensitiveField: string) => {
     let sensitiveFieldLength = sensitiveField.split(",").length; //If there is a subSensitiveField like  address,phoneNumber
     /*console.log("sensitiveField: "+sensitiveField);*/
     if (sensitiveFieldLength == 1) {
@@ -227,11 +227,10 @@ function updateCase(
     console.log("Entered Update Case and Insertion License");
     let keys: Array<{
       usedKey: string;
-      userGoDataId: string;
-      email: string;
+      hospital: string;
     }>;
     //We encrypt the key with the RSA Keys of Admin user and same for the Hospital
-    User.findOne({ email: config.USER })
+    User.findOne({ hospital: config.USER_NAME })
       .then((managerUser) => {
         /* console.log("managerUser: "+managerUser); */
         if (managerUser) {
@@ -248,18 +247,17 @@ function updateCase(
                   encryptionKey
                 );
                 //Hospital, if the hospital does exist in our DB we also save for it THE LICENSE!
+                // FIXME: createdBy.email --> Hospital
                 keys = [
                   {
                     /*institutionName : config.INSTITUTION,*/
                     usedKey: keyEncrypted,
-                    userGoDataId: config.USERGODATAID,
-                    email: config.USER,
+                    hospital: config.USER_NAME,
                   },
                   {
                     /*institutionName : creatorInstitute,*/
                     usedKey: keyEncrypted2,
-                    userGoDataId: encryptedCase.createdBy,
-                    email: createdBy.email,
+                    hospital: createdBy.hospital,
                   },
                 ];
               } else {
@@ -268,8 +266,7 @@ function updateCase(
                   {
                     /*institutionName : config.INSTITUTION,*/
                     usedKey: keyEncrypted,
-                    userGoDataId: config.USERGODATAID,
-                    email: config.USER,
+                    hospital: config.USER_NAME,
                   },
                 ];
               }
@@ -278,7 +275,6 @@ function updateCase(
                 {
                   caseId: encryptedCase["id"],
                   hashId: hashId,
-                  creatorEmail: createdBy.creatorInstitute,
                   keys: keys,
                 }
               ); //New entry in our DRM server to store the keys
@@ -346,133 +342,8 @@ function updateCase(
       });
   });
 }
-/**
- * Decrypts the case, given email(token:Future) and caseId
- * Examples:
- *
- *    {"caseId":"bla-bla-bla","email":"admin"}
- *
- */
-/*
-
-function decryptCases(email:string,hashId:string): Promise<IResult>{
-    return new Promise((resolve,reject )=> {
-        //Once we have the case we need to check to get the key to decrypt that is encrypted with publicKey of Hospital
-        let decryptedCaseWithSensitiveFields:any = {};
-        //Once we have the hash we need to find the key for the case that is already stored in the client with the getKey
-
-        User.findOne({ email: email}).then((hospitalUser)=>{
-            if(hospitalUser!=null){
-                GoDataLicenses.findOne({ hashId: hashId}).then((goDataLicense)=>{
-                    if(goDataLicense!=null){
-                        // GoDataLicense found...
-                        let i = 0;
-                        // Find where the hospitalName is equal to email, inside the licenses...
-                        while (goDataLicense.keys[i].hospitalName.toString() != email) {
-                            i = i + 1;
-                            if(goDataLicense.keys.length==i){
-                                return reject({ message:  "Don't have permission for the case" , statusCode: 404});
-                            }
-                        }
-                        if (goDataLicense.keys[i].hospitalName.toString() == email) {
-                            //We will return the key encrypted with the public key, so only the
-                            // hospital or user with private key can decrypt and get the symmetric key!
-                            /!*const encrypt: EncryptCases = new EncryptCases;*!/
-                            goDataHelper.getCase(goDataLicense.caseId).then((spCase) => {
-                                if (spCase.error == null) {
-                                    //No error in the response, means correct result
-                                    //Both email and case exists
-                                    let encryptedKey:string = goDataLicense.keys[i].usedKey;
-                                    //let encryptedBufferKey:Buffer = new Buffer(encryptedKey, 'base64');
-
-                                    let keyDecrypted:string = asymmetricCipher.decryptKeyRSA(hospitalUser.privateKey,encryptedKey);
-                                    console.log("key Decrypted: " +keyDecrypted);
-                                    let tes = config.SENSITIVEDATA;
-                                    //Decrypting
-                                    config.SENSITIVEDATA.forEach(sensitiveField => {
-                                        let subSensitiveField = sensitiveField.split(",");
-                                        //If there is a document we have address,phoneNumber
-                                        if (subSensitiveField.length == 1) {
-                                            //If the beginning of the value is equal to /ENC/ we decrypt the field
-                                            if(spCase[sensitiveField]!=null){
-                                                if (spCase[sensitiveField].substring(0, 5) == "/ENC/") {
-                                                    let sensitiveFieldValueSplit = spCase[subSensitiveField[0]].split("/");
-                                                    let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-                                                    let encryptedFieldValue = spCase[subSensitiveField[0]].substring(offsetEncryptedFieldValue,);
-                                                    /!*let valueToDecrypt = spCase[sensitiveField].substring(42,)*!///from 42 because after /ENC/ we have the id of the creator
-                                                    let decryptedField: String = symmetricCipher.decryptSymmetric(encryptedFieldValue, keyDecrypted);
-                                                    //spCase[sensitiveField] = decryptedField
-                                                    decryptedCaseWithSensitiveFields[sensitiveField] = decryptedField;
-                                                }
-                                            }else{
-                                                console.log(`${sensitiveField} is null, not decrypting this field!`);
-                                            }
-                                        }
-                                        else {
-                                            // Has sensitiveField configured in config with internal subfields of the objects stored in a array
-                                            // Documents which contains a list of documents such as nationality, archived_id etc, so
-                                            // need to go over each document and encrypt the number of that document which we want to protect
-                                            // Also applies for addresses, which might contain phone and addresses
-                                            /!*let fieldObjectsLength = spCase[subSensitiveField[0]].length;
-                                            for (let subSensitiveFields = 0; subSensitiveFields < fieldObjectsLength; subSensitiveFields++) {*!/
-                                                if(spCase[subSensitiveField[0]]!=null){
-                                                    spCase[subSensitiveField[0]].forEach((spCaseSubObject: any, index:  number)=>{
-                                                        if (!(subSensitiveField[0] == "documents" && spCaseSubObject["type"].toString() == "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_CIP_HASH")) {
-                                                            let sensitiveFieldValueSplit = spCaseSubObject[subSensitiveField[1]].split("/");
-                                                            let offsetEncryptedFieldValue = sensitiveFieldValueSplit[1].length + sensitiveFieldValueSplit[2].length + 3;
-                                                            let encryptedFieldValue = spCaseSubObject[subSensitiveField[1]].substring(offsetEncryptedFieldValue,);
-                                                            if (sensitiveFieldValueSplit[1] == "ENC") { //if is encrypted
-                                                                let decryptedField: String = symmetricCipher.decryptSymmetric(encryptedFieldValue, keyDecrypted);
-                                                                //spCase[subSensitiveField[0]][subSensitiveFields][subSensitiveField[1]] = decryptedField;
-                                                                if(subSensitiveField[0] == "documents"){
-                                                                    let documentTypeSplit = spCaseSubObject["type"].split("_");
-                                                                    let documentType = documentTypeSplit.splice(6,documentTypeSplit.length-1).join('');
-                                                                    decryptedCaseWithSensitiveFields[documentType] = decryptedField;
-                                                                }else{
-                                                                    decryptedCaseWithSensitiveFields[subSensitiveField[1]] = decryptedField;
-                                                                }
-                                                            }
-                                                        }
-                                                    });
-                                                }else{
-                                                    console.log(`${subSensitiveField[0]} is null, not decrypting this field!`);
-                                                }
-                                            /!*}*!/
-                                        }
-                                    });
-                                    return resolve({ message: decryptedCaseWithSensitiveFields, statusCode: 200});
-                                } else {
-                                    return reject({ message: "Case not found, erroneous id!", statusCode: 404});
-                                }
-                            }).catch((err) => {
-                                //Some error, can't retrieve case
-                                console.log(err);
-                                return reject({ message: "Server error, while trying to find case!", statusCode: 500});
-                            });
-                        }else{
-                            // User hasn't got permission to view the case nether the key
-                            return reject({ message: "Don't have permission for the case", statusCode: 404});
-                        }
-                    }else{
-                        return reject({ message: "Case not found, erroneous id!", statusCode: 404});
-                    }
-                }).catch((err)=>{
-                    console.log("Error while getting GoDataLicense "+err);
-                    return reject({ message:  "Server error, please try again", statusCode: 500});
-                });
-            }else{
-                return reject({ message: "User doesn't exist", statusCode: 404});
-            }
-        }).catch((err)=>{
-            return reject({ message: "Server error, please check the fields are as required", statusCode: 500});
-        });
-    });
-}
-*/
 
 export default {
   encryptCases,
-  encryptCase,
   updateCase
-  /*decryptCases*/
 };
