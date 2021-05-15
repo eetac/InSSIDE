@@ -11,28 +11,17 @@ Go to **Deployment** to deploy the project.
 
 ### Pre-requisites 📋
 
-_First and foremost ._
-```
-Running GoData Server with a User is required
-```
-_Second a mongodb BDD is required._
-```
-MongoDB connection URI must be provided in 
-Go.Data_Enc_Serv\src\database.ts
-```
+1. Running GoData Server with registered User is required
+2. Mongodb BDD is required
+
 ### Installation 🔧
 
-_To be able to deploy the DRM Server, just use_
-
-_npm install_
-
+_First install the DRM Server packages,_
 ```
 cd Go.Data_Enc_Serv\
 npm install
 ```
-
-_and repeat the process, to deploy chrome anonymization extension_
-
+_Next install packages for chrome anonymization extension_
 ```
 cd Go.Data_Enc_Serv\
 npm install
@@ -44,14 +33,25 @@ Make a copy of the file Go.Data_Enc_Serv\src\lib\config_example.ts and rename it
 ```
 _Once we have a config.ts file, we need to fill the empty values_
 ```
- URL: GoData API location
- USER: Email used to enter godata server
- PASSWORD: Password in clear, used to access GoData
- OUTBREAK_ID: Outbreak Id in GoData
- sensitiveData: Fields we want to protect, such as firstName
-                Must match with GoData!
+    URL             :   "http://localhost:3000/api", //Go Data URI
+    IV_LENGTH       :   16, // Minimum Length 16 IV
+    saltRounds      :   10, // Hash Function Rounds, recommended for security at least 10
+    EMAIL           :   "encryption@local.com", //Email used to enter godata server for admin
+    HOSPITAL        :   "admin", // Hospital Name, in our case it is the administrator name for DRM server
+    USER_GODATA_ID  :   "9fd48f7a-58c9-44de-836b-5743c9845b3b",
+    PASSWORD        :   "NobodyShallPass", //Password in clear, used to access GoData
+    DOCUMENT_HASH   :   "LNG_REFERENCE_DATA_CATEGORY_DOCUMENT_TYPE_HASHID",
+    USER_AGENT      :   "GoData LocalHost Connector 2.5.6",
+    OUTBREAK_ID     :   "33227825-a497-46ae-a8b9-8ee30921db3e", //Outbreak Id in GoData
+    SENSITIVE_DATA   :   ["firstName","middleName","lastName","documents,number","addresses,phoneNumber"],
+    // MongoDB Uri for DRM server, different from GoData/can be the same too!
+    DB              :   {
+        URI     : process.env.MONGODB_URI || 'mongodb://localhost:27017/DRM',
+        USER    : process.env.MONGODB_USER,
+        PASSWORD: process.env.MONGODB_PASSWORD
+    },
+    AUTO_ENCRYPTION_TIMER: 0 // If the time is too short it will only auto encrypt when the previous is complete!
 ```
-
 ## Tests ⚙️
 
 _Explained how to test, different endpoints. _
@@ -63,27 +63,31 @@ No tests implemented Yet!
 _Endpoints results from tests_
 
 ```
-Not End2End tests implemented,yet!
+No End2End tests implemented,yet!
 ```
 
 ## Deployment 📦
 
 _To be able to deploy successfully, the prerequisites must be fullfilled and Installation must be completed._
-_If this are met, than just follow the commands below in terminals to deploy._ 
+_If this are met, just follow the commands below in terminals to deploy._ 
 ```
 Terminal 1
 cd Go.Data_Enc_Serv\
 npm run clean
 npm run build
 npm run start
-//Server must be running
+//Server has initialized and is awaiting
 ```
 ```
 Terminal 2
 cd Go.Data-Chrome_Extension\
 npm run build
-npm run start
-//Anonymization Connector running at localhost:4200/
+```
+// Now load the extension in Chrome 
+```
+1. Enable developer mode in chrome extensions
+2. Load uncompressed extension
+3. Ready to work!
 ```
 ## Built With 🛠️
 
@@ -122,8 +126,6 @@ This project is under the EETAC (The MIT License) - Read the license agreement [
 
 ## Gratitudes 🎁
 * Thanks GoData Team for helping all the way through! ❤️.
-
-
-
+* Thanks UPC for funding such an amazing project! ❤️.
 ---
 ⌨️ with ❤️ from [Krunal](https://github.com/krunalmiracle) 😊
