@@ -92,15 +92,15 @@ async function getKeyOfCase(req: Request, res: Response) {
     //TODO: Future get from token, now just trusting the message body...
     let hospital: string = req.body.hospital;
     console.log("-> hospital", hospital);
-
-    GoDataLicenses.find({ hashId: hashId}).then((goDataLicenses)=>{
-        if (!Array.isArray(goDataLicenses) || !goDataLicenses.length  ) {
-            res.status(404).send({error: { message:"Case not found, erroneous hashid" ,status:404}});
-        }else{
+    try{
+    GoDataLicenses.find({hashId: hashId}).then((goDataLicenses) => {
+        if (!Array.isArray(goDataLicenses) || !goDataLicenses.length) {
+            res.status(404).send({error: {message: "Case not found, erroneous hashid", status: 404}});
+        } else {
             let isFound = false;
-            goDataLicenses.forEach((goDataLicense) =>{
-                if(goDataLicense){
-                    goDataLicense.keys.forEach((key) =>{
+            goDataLicenses.forEach((goDataLicense) => {
+                if (goDataLicense) {
+                    goDataLicense.keys.forEach((key) => {
                         if (key.hospital.toString().toLowerCase() === hospital.toLowerCase()) {
                             //We will return the key encrypted with the public key, so only the
                             // hospital or user with private key can decrypt and get the symmetric key!
@@ -113,43 +113,15 @@ async function getKeyOfCase(req: Request, res: Response) {
                 }
             });
             // None found
-            if(!isFound){
-                return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
+            if (!isFound) {
+                return res.status(404).send({error: {message: "Permission required for the case", status: 404}});
             }
         }
     });
-
-
-    GoDataLicenses.findOne({ hashId: hashId}).then((goDataLicense)=>{
-
-        if(goDataLicense){
-            // GoDataLicense found...
-            let i = 0;
-            // Find where the hospitalName is equal to hospital, inside the licenses...
-            while (goDataLicense.keys[i].hospital.toString() !== hospital) {
-                i = i + 1;
-                console.log("-> goDataLicense.keys[i].hospital: ", goDataLicense.keys[i].hospital);
-                if(goDataLicense.keys.length === i){
-                    return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
-                }
-            }
-            if (goDataLicense.keys[i].hospital.toString() === hospital) {
-                //We will return the key encrypted with the public key, so only the
-                // hospital or user with private key can decrypt and get the symmetric key!
-                return res.status(200).send({
-                    "license": goDataLicense.keys[i].usedKey
-                });
-            }else{
-            // User hasn't got permission to view the case nether the key
-                return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
-            }
-        }else{
-           res.status(404).send({error: { message:"Case not found, erroneous id" ,status:404}});
-        }
-    }).catch((err)=>{
-        console.log("Error while getting GoDataLicense "+err);
-        return res.status(500).send({error: { message:"Server error, try again" ,status:500}});
-    });
+    }catch(err){
+        console.log("Error while getting GoDataLicense " + err);
+        return res.status(500).send({error: {message: "Server error, try again", status: 500}});
+    }
 }
 
 async function dataKeyTransfer(req:Request, res: Response){
