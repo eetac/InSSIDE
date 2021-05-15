@@ -38,7 +38,7 @@ export class HomeComponent implements OnInit {
     this.userStatus();
     this.decryptedDataAvailable = false;
     this.decryptForm = this.formBuilder.group({
-      caseId: ['', []]
+      hashId: ['', []]
     });
     this.transferForm = this.formBuilder.group({
       hospitalToTransfer: ['', [Validators.required]]
@@ -55,14 +55,14 @@ export class HomeComponent implements OnInit {
   }
 
   decryptCase(){
-    if (this.fdecryptForm.caseId.value !== '' ) {
+    if (this.fdecryptForm.hashId.value !== '' ) {
       if (this.injectionDecryptedData || this.decryptedData ){
         this.reload();
       }else{
-        this.runDecryption(this.fdecryptForm.caseId.value);
+        this.runDecryption(this.fdecryptForm.hashId.value);
       }
     }else{
-      this.alertChromeTab('caseId Required');
+      this.alertChromeTab('hashId Required');
     }
   }
   chromeDecryptAndInject(){
@@ -76,19 +76,40 @@ export class HomeComponent implements OnInit {
         tabs[0].id,
         { code: `console.log("URL: ", "${url}");` }
       );
-      // Separate the string and obtain the caseId
+      // Separate the string and obtain the hashId
       const UrlSplit = url.split('/');
       if (UrlSplit.length === 6){
-        if (UrlSplit[5] === 'view'){
-          const caseIdUrl = UrlSplit[4].toString();
-          if (caseIdUrl){
-            this.fdecryptForm.caseId.setValue(caseIdUrl);
-            // FIXME: CHANGED FROM GET CASE FROM SERVER TO OFFLINE DOM RETRIEVAL
-            this.runDecryption(caseIdUrl);
-          }else{
-            // tslint:disable-next-line:max-line-length
-            this.alertChromeTab('Error: Not GoData Patient Case Page');
-          }
+        if (UrlSplit[5] === 'view' || UrlSplit[5] === 'modify'){
+          const hashIdUrl = UrlSplit[4].toString();
+          this.domManipulationService.getHashIdFromDOM().then((hashIds) => {
+             // Hash Id
+              // @ts-ignore
+              chrome.runtime.sendMessage( {HomeHashIdResult: hashIds}, (_: any) => {});
+              // @ts-ignore
+              chrome.runtime.sendMessage( hashIds, (_: any) => {});
+              /**documents: Array(2)
+               * 0: {number: "9cbf8a4dcb8e30682b927f352d6559a0", type: "HASHID"}
+               * 1: {number: "9cbf8a4dcb8e30682b927f352d6559a0", type: "HASHID"}
+               */
+              if (hashIds){
+                  if (!Array.isArray(hashIds) || !hashIds.length  ) {
+                      this.alertChromeTab('Error: No Hash Id found');
+                  }else{
+                      if (hashIds.every( (val, i, arr) => val.number === arr[0].number))
+                      {
+                          this.fdecryptForm.hashId.setValue(hashIds[0].number);
+                          // CHANGED FROM GET CASE FROM SERVER TO OFFLINE DOM RETRIEVAL
+                          this.runDecryption(hashIds[0].number);
+                      }else{
+                          this.alertChromeTab('Error: Different HashIds for same case');
+                      }
+                  }
+              }else{
+                  this.alertChromeTab('Error: Hash Id Nill on current page');
+              }
+          }).catch((err) => {
+              this.alertChromeTab('Error: Not GoData Patient Case Page');
+          });
         }else{
           this.alertChromeTab('Error: Not GoData Patient Case Page');
         }
@@ -103,9 +124,9 @@ export class HomeComponent implements OnInit {
    * injecting it onto the webpage.
    * @returns Returns void
    * @krunal
-   * @param caseId - string
+   * @param hashId - string
    */
-  runDecryption( caseId: string) {
+  runDecryption( hashId: string) {
     this.domManipulationService.getCaseFromDOM().then((caseData) => {
       // @ts-ignore
       // tslint:disable-next-line:only-arrow-functions
@@ -113,9 +134,11 @@ export class HomeComponent implements OnInit {
       if (caseData) {
         // CaseData retrieved --> Now get the license than decrypt and in last Inject to the page
         // Step1. Get License and Decrypt the license to obtain symmetric key
-        this.getLicenseAndObtainSymmetricKey(caseId).then((decryptedLicense) => {
-          // Step3. Decrypt the case with the symmetric key
-          try {
+        this.getLicenseAndObtainSymmetricKey(hashId).then((decryptedLicense) => {
+            // @ts-ignore
+            chrome.runtime.sendMessage( {DecryptedLicense: decryptedLicense}, (_: any) => {});
+            // Step3. Decrypt the case with the symmetric key
+            try {
             const decryptedCase = this.decryptCaseFromLicense(decryptedLicense, caseData);
             if (decryptedCase){
               if (Object.keys(decryptedCase).length > 0){
@@ -132,7 +155,7 @@ export class HomeComponent implements OnInit {
             this.openSnackBar('Error: License/Case are bad.', 'Close', 'error-snackbar');
           }
           // Step4. Inject the decrypted data to the webpage
-          this.domManipulationService.injectValues(this.injectionDecryptedData);
+            this.domManipulationService.injectValues(this.injectionDecryptedData);
         }).catch((_) => {});
       } else{
         this.alertChromeTab('Error: Could not read the page contents');
@@ -145,14 +168,14 @@ export class HomeComponent implements OnInit {
    * license with the private key.
    * @returns Returns the decrypted key else null on error!
    * @krunal
-   * @param caseId - string
+   * @param hashId - string
    */
-  getLicenseAndObtainSymmetricKey(caseId: string): Promise<any>{
+  getLicenseAndObtainSymmetricKey(hashId: string): Promise<any>{
     return new Promise(async (resolve, reject ) => {
       const hospital = this.authenticationService.currentUserValue.hospital;
       const privateKey = this.authenticationService.currentUserValue.privateKey;
       // tslint:disable-next-line:max-line-length
-      this.caseService.getLicense(hospital, caseId).subscribe(
+      this.caseService.getLicense(hospital, hashId).subscribe(
         data => {
           // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
           // @ts-ignore
@@ -168,7 +191,7 @@ export class HomeComponent implements OnInit {
             decryptedLicense = this.cryptographyService.decryptLicenseAsymmetric(privateKey, encryptedLicense);
             // @ts-ignore
             // tslint:disable-next-line:only-arrow-functions
-            chrome.runtime.sendMessage({decryptedLicense}, function(_: any) {});
+            /*chrome.runtime.sendMessage({decryptedLicense}, function(_: any) {});*/
             // DONE : Decrypt the case, already contained in the message. #Later substitute with html injected
             return resolve( decryptedLicense);
           }catch (e) {
@@ -207,10 +230,12 @@ export class HomeComponent implements OnInit {
             // FIXME: Choose between hospital or name of the hospital, thus removing
             //        the hospital completely. Updating the registration and login system to use
             //        Name of the hospital, for the account!
-            if (sensitiveFieldValueSplit[2] === this.authenticationService.currentUserValue.hospital.toLowerCase()){
+            if (sensitiveFieldValueSplit[2].toLowerCase() === this.authenticationService.currentUserValue.hospital.toLowerCase()){
                // '/ENC/Hospital/SensitiveField'
               const offsetEncryptedFieldValue = 0 + 1 + sensitiveFieldValueSplit[1].length + 1 + sensitiveFieldValueSplit[2].length + 1;
               const encryptedFieldValue = spCase[sensitiveFieldArray[0]].substring(offsetEncryptedFieldValue);
+              // @ts-ignore
+              chrome.runtime.sendMessage( {encryptedFieldValue}, (_: any) => {});
               spCase[sensitiveField] = this.cryptographyService.decryptPropertySymmetric(symmetricKey, encryptedFieldValue);
               decryptedCaseNamed[sensitiveField] =  spCase[sensitiveField];
             }else{
@@ -275,12 +300,12 @@ export class HomeComponent implements OnInit {
   }
 
   shareAccessToHospitals(){
-    if ((this.fdecryptForm.caseId.value !== '') && (this.ftransferForm.hospitalToTransfer.value !== '')) {
+    if ((this.fdecryptForm.hashId.value !== '') && (this.ftransferForm.hospitalToTransfer.value !== '')) {
 
         const hospital = this.authenticationService.currentUserValue.hospital;
-        const caseId = this.fdecryptForm.caseId.value;
+        const hashId = this.fdecryptForm.hashId.value;
         const hospitalToTransfer = this.ftransferForm.hospitalToTransfer.value;
-        this.caseService.transferLicense(hospital, caseId, hospitalToTransfer).subscribe(
+        this.caseService.transferLicense(hospital, hashId, hospitalToTransfer).subscribe(
         data => {
           // FROM LICENSE GET THE SYMMETRIC Key & Decrypt the case and inject+Show
           console.log(data);
@@ -293,7 +318,7 @@ export class HomeComponent implements OnInit {
       );
     }
     else {
-      this.alertChromeTab('Error: caseId and Destination Hospital Require');
+      this.alertChromeTab('Error: hashId and Destination Hospital Require');
     }
   }
   // Notifiers

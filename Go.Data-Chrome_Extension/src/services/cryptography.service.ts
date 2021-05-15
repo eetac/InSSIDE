@@ -109,7 +109,12 @@ export class CryptographyService {
     /*const iv = Buffer.from(textParts[0], 'base64');
     console.log('iv', iv);*/
     const ivBase64 = encryptedDataArray.splice(0, 1).toString();
-    const encryptedBase64 = encryptedDataArray.join(':');
+    // @ts-ignore
+    chrome.runtime.sendMessage( {ivBase64Sym: ivBase64}, (_: any) => {});
+    // "iv":"encrypt:data"
+    const encryptedBase64 = encryptedDataArray.join();
+    // @ts-ignore
+    chrome.runtime.sendMessage( {encryptedBase64: encryptedDataArray.join()}, (_: any) => {});
     /*console.log('keyBase64 ', keyBase64);
     console.log('ivBase64 ', ivBase64);
     console.log('encryptedBase64 ', encryptedBase64);*/

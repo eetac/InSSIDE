@@ -88,11 +88,39 @@ async function register(req: Request, res: Response) {
 
 async function getKeyOfCase(req: Request, res: Response) {
     //Hospital ask for the decryption key of a case and DRM return the key encrypted with the pubKey for security reasons
-    let caseId = req.body.caseId;//req.params.hashCase;
+    let hashId = req.body.hashId;//req.params.hashCase;
     //TODO: Future get from token, now just trusting the message body...
     let hospital: string = req.body.hospital;
     console.log("-> hospital", hospital);
-    GoDataLicenses.findOne({ caseId: caseId}).then((goDataLicense)=>{
+
+    GoDataLicenses.find({ hashId: hashId}).then((goDataLicenses)=>{
+        if (!Array.isArray(goDataLicenses) || !goDataLicenses.length  ) {
+            res.status(404).send({error: { message:"Case not found, erroneous hashid" ,status:404}});
+        }else{
+            let isFound = false;
+            goDataLicenses.forEach((goDataLicense) =>{
+                if(goDataLicense){
+                    goDataLicense.keys.forEach((key) =>{
+                        if (key.hospital.toString().toLowerCase() === hospital.toLowerCase()) {
+                            //We will return the key encrypted with the public key, so only the
+                            // hospital or user with private key can decrypt and get the symmetric key!
+                            isFound = true;
+                            return res.status(200).send({
+                                "license": key.usedKey
+                            });
+                        }
+                    });
+                }
+            });
+            // None found
+            if(!isFound){
+                return res.status(404).send({error: { message:"Permission required for the case" ,status:404}});
+            }
+        }
+    });
+
+
+    GoDataLicenses.findOne({ hashId: hashId}).then((goDataLicense)=>{
 
         if(goDataLicense){
             // GoDataLicense found...
@@ -130,7 +158,7 @@ async function dataKeyTransfer(req:Request, res: Response){
     let hospital = req.body.hospital; // TODO: Retrieve from token!
     let hospitalToTransfer = req.body.hospitalToTransfer; // Directly in the json as nothing personal
     console.log("Transfer Solicited for "+hospitalToTransfer);
-    let caseId = req.body.caseId;
+    let hashId = req.body.hashId;
     //We need both the private key of the existent user and the private key of the transfer user
     // First we find that the hospital exists
     let managerUser = await User.findOne({ hospital: config.HOSPITAL});
@@ -143,7 +171,7 @@ async function dataKeyTransfer(req:Request, res: Response){
         return res.status(404).send({error: { message:"Cannot transfer, target hospital doesn't exist" ,status:404}});
     }
     // Contains the symmetric key!
-    GoDataLicenses.findOne({ caseId: caseId}).then((licenseToTransfer)=>{
+    GoDataLicenses.findOne({ hashId: hashId}).then((licenseToTransfer)=>{
         if(licenseToTransfer){
             // GoDataLicense found...
             let i = 0;
@@ -162,7 +190,7 @@ async function dataKeyTransfer(req:Request, res: Response){
             while (licenseToTransfer.keys[i].hospital.toString() !== config.HOSPITAL) {
                 i = i + 1;
                 if(licenseToTransfer.keys.length===i){
-                    console.error("Admin not found, for license case id: ", caseId);
+                    console.error("Admin not found, for license case id: ", hashId);
                     return res.status(500).send({error: { message:"Server error, please contact administrator" ,status:500}});
                 }
             }

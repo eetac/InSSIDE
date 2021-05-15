@@ -16,10 +16,10 @@ export class CaseService {
    * @returns Returns license from the server.
    * @krunal
    * @param hospital - string
-   * @param caseId - string
+   * @param hashId - string
    */
-  getLicense(hospital: string, caseId: string) {
-    return this.http.post<any>(`${environment.apiUrl}/drm/getLicense`, { hospital, caseId })
+  getLicense(hospital: string, hashId: string) {
+    return this.http.post<any>(`${environment.apiUrl}/drm/getLicense`, { hospital, hashId })
     .pipe(map(data => {
       // Returns a Java Object mapped!
       return data;
@@ -31,11 +31,11 @@ export class CaseService {
    * @returns Returns a data or error both containing messages from server.
    * @krunal
    * @param hospital - string
-   * @param caseId - string
+   * @param hashId - string
    * @param hospitalToTransfer - string
    */
-  transferLicense(hospital: string, caseId: string, hospitalToTransfer: string) {
-    return this.http.post<any>(`${environment.apiUrl}/drm/transferLicense`, { hospital, hospitalToTransfer, caseId })
+  transferLicense(hospital: string, hashId: string, hospitalToTransfer: string) {
+    return this.http.post<any>(`${environment.apiUrl}/drm/transferLicense`, { hospital, hospitalToTransfer, hashId })
     .pipe(map(data => {
       // Returns a Java Object mapped!
       return data;

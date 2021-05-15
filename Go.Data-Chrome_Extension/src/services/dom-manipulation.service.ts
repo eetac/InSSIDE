@@ -6,6 +6,63 @@ import {Injectable} from '@angular/core';
 export class DomManipulationService {
 
   constructor() { }
+    /**
+     * Gets the current tab HashID of the case, using html injection through chrome API.
+     * @returns Returns HashId, else returns
+     * null value.
+     * @krunal
+     */
+    getHashIdFromDOM(): Promise<any>{
+        return new Promise(async (resolve, reject ) => {
+            let code = `let documents = [];
+        let addresses = [];
+        let tmp1 = '';
+        let documentsAvailable = true;
+        let addressesAvailable = true;
+        let tempNumber = '';
+        let tempType = '';
+        let strHtmlNum = '';
+        let strHtmlType = '';
+        let i = 0;`;
+            // Nested Fields querySelector (['documents,number'])
+            code = code + `i=0;documentsAvailable=true;
+              while(documentsAvailable){
+                strHtmlNum = 'input[name="documents['+i+'][number]"]';
+                strHtmlType = 'mat-select[name="documents['+i+'][type]"]';
+                tempType = document.querySelector(strHtmlType)?.innerText;
+                tempNumber = document.querySelector(strHtmlNum)?.value;
+                if(tempType && tempNumber){
+                  tmp1 = tempType.replace(/\\s/g, '');
+                  if(tmp1 ==='HASHID'){
+                    documents.push({type:tmp1,number:tempNumber});
+                  }
+                }else{
+                  documentsAvailable = false;
+                }
+                i=i+1;
+              }`;
+            code = code +  `return documents;`;
+            code = `(function (){${code}})();`;
+            // @ts-ignore
+            chrome.runtime.sendMessage( {code}, (_: any) => {});
+            // @ts-ignore
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any) => {
+                if (tabs){
+                    // @ts-ignore
+                    chrome.tabs.executeScript(tabs[0].id, {code }, (result: any) => {
+                        // @ts-ignore
+                        // tslint:disable-next-line:only-arrow-functions
+                        chrome.runtime.sendMessage( {DomManipulationServiceResults: result}, function(_: any) {});
+                        // @ts-ignore
+                        // tslint:disable-next-line:only-arrow-functions
+                        chrome.runtime.sendMessage( {DomManipulationServiceGetCase: result[0]}, function(_: any) {});
+                        return resolve( result[0]);
+                    });
+                }
+            } );
+        });
+    }
+
 
   /**
    * Gets the current tab document elements, using html injection through chrome API.
@@ -26,16 +83,16 @@ export class DomManipulationService {
         let strHtmlNum = '';
         let strHtmlType = '';
         let i = 0;`;
-        environment.sensitiveData.forEach(sensitiveField => {
+      environment.sensitiveData.forEach(sensitiveField => {
           const sensitiveFieldArray = sensitiveField.split(',');
           if (sensitiveFieldArray.length === 1) {
             // Single Fields querySelector
-            let codeSingleField = `queryResult["${sensitiveField}"] = document.querySelector('input[name="${sensitiveField}"]')?.value;`;
+            const codeSingleField = `queryResult["${sensitiveField}"] = document.querySelector('input[name="${sensitiveField}"]')?.value;`;
             code = code + codeSingleField;
           } else {
             // Nested Fields querySelector (['documents,number', 'addresses,phoneNumber', 'addresses,emailAddress',...)
-            if(sensitiveFieldArray[0] === 'documents'){
-              const codeNestedFields = 
+            if (sensitiveFieldArray[0] === 'documents'){
+              const codeNestedFields =
               `i=0;documentsAvailable=true;
               while(documentsAvailable){
                 strHtmlNum = 'input[name="documents['+i+'][number]"]';
@@ -54,7 +111,7 @@ export class DomManipulationService {
               }
               `;
               code = code + codeNestedFields;
-            }else if(sensitiveFieldArray[0] === 'addresses'){
+            }else if (sensitiveFieldArray[0] === 'addresses'){
               const codeNestedFields = `i=0;addressesAvailable = true;
               while(addressesAvailable){
                 strHtmlNum = 'input[name="addresses['+i+'][${sensitiveFieldArray[1]}]"]';
@@ -69,16 +126,16 @@ export class DomManipulationService {
               `;
               code = code + codeNestedFields;
             }
-          } 
+          }
 
         });
-        code = code +  `queryResult["addresses"]=addresses;queryResult["documents"]=documents;return queryResult;`;
-        code = `(function (){${code}})();`;
+      code = code +  `queryResult["addresses"]=addresses;queryResult["documents"]=documents;return queryResult;`;
+      code = `(function (){${code}})();`;
       // @ts-ignore
-      chrome.runtime.sendMessage( {code}, function(_: any) {});
+      chrome.runtime.sendMessage( {code}, (_: any) => {});
       // @ts-ignore
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any) => {
-        if(tabs){
+        if (tabs){
           // @ts-ignore
           chrome.tabs.executeScript(tabs[0].id, {code }, (result: any) => {
             // @ts-ignore
@@ -101,7 +158,7 @@ export class DomManipulationService {
    * @param decryptedCase - Object{'firstName', 'middleName', 'lastName', 'cip', 'phoneNumber'}
    */
   injectValues(decryptedCase: any){
-    let code:string = `
+    let code = `
     let documentSelector;
     `;
     environment.sensitiveData.forEach(sensitiveField => {
@@ -111,7 +168,7 @@ export class DomManipulationService {
         // If the beginning of the value is equal to /ENC/ we decrypt the field
         if (decryptedCase[sensitiveField]) {
           // tslint:disable-next-line:triple-equals
-          let codeSingleField = `
+          const codeSingleField = `
           document.querySelector('input[name="${sensitiveField}"]').value = '${decryptedCase[sensitiveField]}';
           `;
           code = code + codeSingleField;
@@ -119,10 +176,10 @@ export class DomManipulationService {
       } else if (sensitiveFieldArray.length === 2) {
         if (decryptedCase[`${sensitiveFieldArray[0]}`]) {
           decryptedCase[`${sensitiveFieldArray[0]}`].forEach((sensitiveDocument: any, index: number) => {
-            let codeMultipleField = `
+            const codeMultipleField = `
             documentSelector = 'input[name="${sensitiveFieldArray[0]}[${index}][${sensitiveFieldArray[1]}]"]';
             tempNumber = document.querySelector(documentSelector).value = '${sensitiveDocument[sensitiveFieldArray[1]]}';
-            `
+            `;
             code = code + codeMultipleField;
           });
         }
@@ -130,15 +187,15 @@ export class DomManipulationService {
     });
     code = `(function (){${code}})();`;
     // @ts-ignore
-    chrome.runtime.sendMessage( {code}, function(_: any) {});
+    chrome.runtime.sendMessage( {code}, (_: any) => {});
     // @ts-ignore
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any) => {
-      if(tabs){
+      if (tabs){
         // @ts-ignore
         chrome.tabs.executeScript(tabs[0].id, {code}, (_: any) => {
           return true;
         });
       }
     } );
-  };
+  }
 }
