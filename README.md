@@ -13,7 +13,7 @@ Go to **Deployment** to deploy the project.
 
 1. Running GoData Server with registered User is required
 2. Add 2 new reference data for documents as follows
-    a. "CaseId"
+    a. "CIP"
     b. "HashId"
   ~psst<Without the quotemarks>
 4. Mongodb BDD is required
@@ -58,13 +58,24 @@ _Once we have a config.ts file, we need to fill the empty values_
 ```
 ## Tests ⚙️
 
-_Explained how to test, different endpoints. _
+**Explained how to test Encryption & Decryption**
+1. Register with hospital name in chrome extension, where the hospital is domain of the email address.
+**user@hospital1.com -> Register with "hospital1" in chrome.**
+**Store the private key in clipboard to a txt file.***
+2. Add a case with CIP, and the sensitive Fields as configured in SENSITIVE_DATA in config.ts_OBLIGATORY REQUIREMENT
+3. Encrypt the Data -> No action required if programmed in config.ts as a AUTO_ENCRYPTION_TIMER > 0 or force it from a browser
 ```
-No tests implemented Yet!
+    Type in browser as a URL
+    localhost:4000/encrypt
+    Must return Encrypted succesfully
 ```
+3. Now if we access GoData, the cases sensitive information is protected.
+4. To decrypte, we just need to open the extension.
+3. And the case sensitive information will be visible.
+
 ### End-to-End Testing 🔩
 
-_Endpoints results from tests_
+_Endpoints tests_
 
 ```
 No End2End tests implemented,yet!
