@@ -102,7 +102,9 @@ npm run build
 ```
 1. Enable developer mode in chrome extensions
 2. Load uncompressed extension
-3. Ready to work!
+3. Register with hospital name in chrome extension, where the hospital is domain of the email address. user@hospital1.com -> Register with "hospital1" in chrome. 
+4. Store the private key in clipboard to a txt file.*    
+5. Ready to work!
 ```
 ## Built With 🛠️
 
