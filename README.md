@@ -12,7 +12,11 @@ Go to **Deployment** to deploy the project.
 ### Pre-requisites 📋
 
 1. Running GoData Server with registered User is required
-2. Mongodb BDD is required
+2. Add 2 new reference data for documents as follows
+    a. "CaseId"
+    b. "HashId"
+  ~psst<Without the quotemarks>
+4. Mongodb BDD is required
 
 ### Installation 🔧
 
