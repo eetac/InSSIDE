@@ -2,6 +2,13 @@
 
 _Anonymization of GoData cases which helps provide the anonymization of patiens without loosing the ability of GoData contact tracing. Thus providing privacy and security for patient sensitive data while keeping unsensitive information available for the hospitals and epidemiologist_
 
+## Demo video 📹
+
+
+
+https://user-images.githubusercontent.com/70297984/170833928-57618231-e8bf-4c59-b659-68890b84d6ff.mp4
+
+
 ## Taking off 🚀
 
 _These instructions will allow you to get a copy of the project running on your local machine for development and testing purposes._
